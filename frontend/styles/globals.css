@@ -1,0 +1,200 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /*
+     * SMART AI light palette.
+     *
+     * The base is a barely-tinted lavender white rather than pure #FFF — on a
+     * light UI the page needs to sit *behind* the cards, and stark white leaves
+     * white cards with nothing to lift off. Depth here comes from shadow and a
+     * faint tint step, not from darkness.
+     *
+     * The brand indigo→violet→cyan is darkened from its dark-theme values so it
+     * still clears text contrast on white.
+     */
+    --background: 250 40% 99%;
+    --foreground: 232 34% 12%;
+
+    /* Elevation ramp: page → card → raised */
+    --card: 0 0% 100%;
+    --card-foreground: 232 34% 12%;
+    --elevated: 250 34% 97%;
+
+    --primary: 243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 265 80% 60%;
+    --secondary-foreground: 0 0% 100%;
+    /* Cyan has to come down a long way to be legible as text on white. */
+    --accent: 189 92% 30%;
+    --accent-foreground: 0 0% 100%;
+
+    --muted: 245 30% 95%;
+    --muted-foreground: 232 14% 42%;
+
+    --destructive: 0 72% 48%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 244 25% 90%;
+    --input: 244 25% 88%;
+    --ring: 243 75% 59%;
+
+    /*
+     * The "mixed colour" washes. Sections pick one of these as a soft tint so
+     * the page moves through several hues instead of being one flat white.
+     */
+    --wash-lilac: 255 90% 97%;
+    --wash-mint: 168 70% 96%;
+    --wash-peach: 24 100% 97%;
+    --wash-sky: 205 95% 97%;
+
+    --radius: 1rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    /* The fixed navbar must not cover the heading of a jumped-to section. */
+    scroll-padding-top: 5.5rem;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+
+  /* Headings carry the display face; body copy stays on Inter for readability. */
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+  }
+
+  ::selection {
+    @apply bg-primary/40 text-foreground;
+  }
+
+  /* Anything that animates in on scroll should simply be there for people who
+     asked their OS to stop moving things. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /*
+   * Fluid display scale. clamp() means the hero never needs a breakpoint to
+   * stop overflowing on a phone or looking undersized on a wide monitor.
+   */
+  .text-display {
+    font-size: clamp(2.4rem, 1.3rem + 4.4vw, 4.5rem);
+    line-height: 1.02;
+    letter-spacing: -0.035em;
+    font-weight: 700;
+  }
+
+  .text-h2 {
+    font-size: clamp(1.875rem, 1.2rem + 2.4vw, 3rem);
+    line-height: 1.08;
+    letter-spacing: -0.028em;
+    font-weight: 700;
+  }
+
+  .text-h3 {
+    font-size: clamp(1.25rem, 1.05rem + 0.7vw, 1.5rem);
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    font-weight: 600;
+  }
+
+  .text-lead {
+    font-size: clamp(1.0625rem, 1rem + 0.35vw, 1.25rem);
+    line-height: 1.6;
+    @apply text-muted-foreground;
+  }
+
+  /* Small all-caps label that sits above a section heading. */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-accent;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    /* Darker stops than the dark theme used — a gradient that looked luminous
+       on near-black turns into unreadable pastel on white. */
+    background-image: linear-gradient(
+      100deg,
+      hsl(243 75% 56%) 0%,
+      hsl(265 78% 56%) 45%,
+      hsl(189 92% 34%) 100%
+    );
+    @apply bg-clip-text text-transparent;
+    /* Descenders get clipped by background-clip without a little headroom. */
+    padding-bottom: 0.08em;
+  }
+
+  .glass {
+    @apply border border-black/[0.06] bg-white/75 backdrop-blur-xl;
+  }
+
+  /* Soft colour washes — a section picks one so the page moves through several
+     hues rather than being one uninterrupted sheet of white. */
+  .wash-lilac {
+    background-image: linear-gradient(180deg, hsl(var(--wash-lilac)) 0%, hsl(var(--background)) 100%);
+  }
+
+  .wash-mint {
+    background-image: linear-gradient(180deg, hsl(var(--wash-mint)) 0%, hsl(var(--background)) 100%);
+  }
+
+  .wash-peach {
+    background-image: linear-gradient(180deg, hsl(var(--wash-peach)) 0%, hsl(var(--background)) 100%);
+  }
+
+  .wash-sky {
+    background-image: linear-gradient(180deg, hsl(var(--wash-sky)) 0%, hsl(var(--background)) 100%);
+  }
+
+  /* Film grain. Kills the banding large gradients show on cheap panels. */
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.03;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 0 1px hsl(243 75% 59% / 0.16), 0 18px 60px -20px hsl(243 75% 59% / 0.4);
+  }
+
+  /* Fades a scrolling edge out instead of cutting it with a hard line. */
+  .mask-fade-b {
+    -webkit-mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 60%, transparent 100%);
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted)) transparent;
+  }
+}
