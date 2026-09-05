@@ -143,7 +143,7 @@ function headingSvg(title: string): { svg: string; bottomY: number } {
 function keyTermsSvg(terms: string[], topY: number): { svg: string; endY: number } {
   let svg = "";
   let y = topY + 60;
-  for (const term of terms.slice(0, 5)) {
+  for (const term of terms.slice(0, 6)) {
     const lines = wrap(term, 42, 620, 2);
     svg += `<circle cx="140" cy="${y - 14}" r="9" fill="${C.accent}"/>`;
     svg += `<text font-family="${HAND}" font-size="42" fill="${C.chalkDim}">${lines
@@ -174,7 +174,7 @@ function notesSvg(notes: string[], hasDiagram: boolean): string {
        <line x1="${region.x}" y1="${region.startY - 30}" x2="${region.x + 130}" y2="${region.startY - 30}" stroke="${C.secondary}" stroke-width="3" stroke-linecap="round"/>`;
 
   let y = region.startY;
-  for (const note of notes.slice(0, 4)) {
+  for (const note of notes.slice(0, 6)) {
     const lines = wrap(note, region.fontSize, region.width - 40, 3);
     const needed = lines.length * region.lineHeight + 22;
     if (y + needed > region.maxY) break;
@@ -210,12 +210,43 @@ function boxSvg(box: DiagramBox): string {
 function diagramSvg(board: SlideBoard | undefined, revealCount: number): string {
   const diagram = board?.diagram;
   if (!diagram || diagram.type === "none" || diagram.nodes.length === 0) return "";
-  const nodes = diagram.nodes.slice(0, 6);
+  const nodes = diagram.nodes.slice(0, 7);
   const shown = Math.max(0, Math.min(revealCount, nodes.length));
   if (shown === 0) return "";
 
   const panelX = 1000;
   const panelW = 820;
+
+  if (diagram.type === "timeline") {
+    const railY = 560;
+    const usable = panelW - 80;
+    const stepX = nodes.length > 1 ? usable / (nodes.length - 1) : 0;
+    let svg = `<line x1="${panelX + 40}" y1="${railY}" x2="${panelX + 40 + usable}" y2="${railY}" stroke="${C.frame}" stroke-width="3"/>`;
+    nodes.slice(0, shown).forEach((label, i) => {
+      const cx = panelX + 40 + stepX * i;
+      const above = i % 2 === 0;
+      svg += `<circle cx="${cx}" cy="${railY}" r="12" fill="${C.accent}"/>`;
+      svg += `<line x1="${cx}" y1="${railY}" x2="${cx}" y2="${above ? railY - 90 : railY + 90}" stroke="${C.secondary}" stroke-width="2" stroke-dasharray="5 6"/>`;
+      svg += boxSvg({ x: cx - 150, y: above ? railY - 180 : railY + 20, w: 300, h: 90, label, alt: !above });
+    });
+    return svg;
+  }
+
+  if (diagram.type === "hierarchy") {
+    const top = 300;
+    const rowH = 108;
+    let svg = "";
+    nodes.slice(0, shown).forEach((label, i) => {
+      const inset = i * 46;
+      const w = panelW - inset * 2;
+      const y = top + i * rowH;
+      if (i > 0) {
+        svg += `<line x1="${panelX + panelW / 2}" y1="${y - rowH + 78}" x2="${panelX + panelW / 2}" y2="${y}" stroke="${C.accent}" stroke-width="3" marker-end="url(#arrow)"/>`;
+      }
+      svg += boxSvg({ x: panelX + inset, y, w, h: 78, label, alt: i % 2 === 1 });
+    });
+    return svg;
+  }
 
   if (diagram.type === "compare") {
     const mid = Math.ceil(nodes.length / 2);
@@ -289,19 +320,19 @@ function imageSvg(slide: SlideContent): string {
 
 /** The ordered reveal states of one slide's board: heading → terms → notes → diagram nodes. */
 function slideRevealStates(slide: SlideContent): number {
-  const terms = Math.min(5, slide.board?.keyTerms?.length ?? 0);
-  const notes = Math.min(4, slide.board?.notes?.length ?? 0);
+  const terms = Math.min(6, slide.board?.keyTerms?.length ?? 0);
+  const notes = Math.min(6, slide.board?.notes?.length ?? 0);
   const nodes =
     slide.board?.diagram && slide.board.diagram.type !== "none"
-      ? Math.min(6, slide.board.diagram.nodes.length)
+      ? Math.min(7, slide.board.diagram.nodes.length)
       : 0;
   return 1 + terms + notes + nodes; // 1 = heading-only opening state
 }
 
 function renderSlideState(slide: SlideContent, revealIndex: number, pageLabel: string): string {
   const heading = headingSvg(slide.title);
-  const termCount = Math.min(5, slide.board?.keyTerms?.length ?? 0);
-  const noteCount = Math.min(4, slide.board?.notes?.length ?? 0);
+  const termCount = Math.min(6, slide.board?.keyTerms?.length ?? 0);
+  const noteCount = Math.min(6, slide.board?.notes?.length ?? 0);
   const hasDiagram = Boolean(
     slide.board?.diagram && slide.board.diagram.type !== "none" && slide.board.diagram.nodes.length > 0
   );

@@ -24,7 +24,7 @@ export function Logo({ href = "/", className, iconOnly = false }: LogoProps) {
         <BrainCircuit className="relative h-5 w-5 text-white" aria-hidden />
       </span>
       {!iconOnly && (
-        <span className="font-display text-lg font-bold tracking-tight">
+        <span className="font-display text-lg font-bold tracking-tight text-foreground">
           SMART <span className="text-gradient">AI</span>
         </span>
       )}

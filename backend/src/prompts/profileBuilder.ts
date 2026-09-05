@@ -77,6 +77,14 @@ export interface GenerationOptions {
   /** Target lesson length in minutes (2–30); omitted = derived from profile. */
   durationMin?: number;
   detailLevel?: DetailLevel;
+  /**
+   * Extracted text from a learner-uploaded PDF. When present, the lesson is
+   * grounded in this material (accuracy takes priority over invention) while
+   * still being told to add genuinely useful context the source doesn't cover.
+   */
+  sourceText?: string;
+  /** True when `sourceText` is an excerpt, not the whole document. */
+  sourceTruncated?: boolean;
 }
 
 /**
@@ -102,7 +110,7 @@ export interface GenerationParams {
   /** What each slide's digital board should favour (diagram vs story beats vs structure). */
   boardGuidance: string;
   /** Preferred diagram type the model should lean toward for this learner. */
-  preferredDiagram: "flow" | "cycle" | "compare" | "list";
+  preferredDiagram: "flow" | "cycle" | "compare" | "list" | "timeline" | "hierarchy";
   /** How much written explanation the board itself carries. */
   boardNotesRule: string;
   /** Depth-of-explanation rule for the narration (driven by detail level). */
@@ -240,24 +248,24 @@ export function deriveGenerationParams(
     traits.memoryType === "story"
       ? "flow"
       : traits.memoryType === "structure"
-        ? "list"
+        ? "hierarchy"
         : traits.examplePreference === "high"
           ? "compare"
           : "cycle";
 
   const boardNotesRule =
     detailLevel === "detailed"
-      ? 'Every slide\'s "board.notes" must contain 2-4 short written explanation lines (each under 12 words) that expand the key terms — definitions, the "why", or a worked micro-example — exactly what a teacher writes under headings on a board.'
+      ? 'Every single slide\'s "board.notes" must contain 3-6 written explanation lines (each up to 18 words) that actually teach — a real definition, the "why" behind the concept, a cause-and-effect link, a worked micro-example, or a number/formula worth remembering. Never a restatement of the slide title or a vague label: each note must stand on its own as something worth copying into a notebook.'
       : detailLevel === "quick"
-        ? 'Keep "board.notes" minimal: at most 1 line, only when a term is genuinely non-obvious.'
-        : 'Give the important slides 1-3 "board.notes": short written lines (under 12 words each) that explain or define the key terms on the board.';
+        ? 'Keep "board.notes" tight but still substantive: 1-2 lines per slide (up to 14 words), each a real definition or fact, not filler.'
+        : 'Every slide needs at least 2-4 "board.notes": written lines (up to 16 words each) that genuinely explain or define the key terms — a definition, the reasoning behind it, or a concrete detail. Do not leave a slide\'s notes empty just because it seems "less important" — every concept deserves at least one real explanatory line.';
 
   const explanationRule =
     detailLevel === "detailed"
-      ? "Explain the WHY and HOW behind every concept, not just the what. Walk through one concrete worked example or scenario per major concept, step by step, in the narration."
+      ? "Explain the WHY and HOW behind every concept, not just the what. Walk through one concrete worked example or scenario per major concept, step by step, in the narration. Never stop at naming or defining a term — always go one level deeper: what causes it, what it leads to, how it connects to the rest of the topic, or where it shows up in practice."
       : detailLevel === "quick"
-        ? "Keep explanations tight and high-level; skip derivations and edge cases entirely."
-        : "Balance clarity and depth: explain the reasoning behind the key ideas without exhaustive detail.";
+        ? "Keep explanations tight and high-level; skip derivations and edge cases entirely, but still say WHY each idea matters in one sentence, not just what it's called."
+        : "Balance clarity and depth: for every key idea, explain not just what it is but why it works that way or why it matters, with at least one concrete example or consequence — never leave a concept at a bare label or a dictionary definition.";
 
   const boardGuidance = [
     traits.learningStyle === "visual" || traits.visualPreference === "high"
@@ -267,7 +275,7 @@ export function deriveGenerationParams(
         : traits.learningStyle === "reading"
           ? "This learner likes text, so boards can lean on a few precise key terms; add a diagram only when it genuinely clarifies."
           : "Balance a few key terms with a diagram when the concept is a process or relationship.",
-    `When a diagram fits, prefer a "${preferredDiagram}" layout, but choose whatever type actually matches the concept.`,
+    `When a diagram fits, prefer a "${preferredDiagram}" layout, but choose whatever type actually matches the concept — "flow" for a sequence of steps, "cycle" for something that repeats, "compare" for two contrasting sides, "list" for grouped items with no order, "timeline" for events across time, "hierarchy" for a top-down breakdown (broadest idea down to specifics). Vary the diagram type across the lesson rather than reusing the same one on every slide.`,
     "keyTerms are the 2-5 short words/phrases the narrator 'writes' on the board as they say them — keep each under 6 words.",
   ].join(" ");
 

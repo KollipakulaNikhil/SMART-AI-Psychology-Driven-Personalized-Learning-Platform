@@ -10,6 +10,7 @@ export function serializePresentation(doc: PresentationDocument) {
     id: doc.id as string,
     topic: doc.topic,
     focus: doc.focus ?? null,
+    sourceFileName: doc.sourceFileName ?? null,
     title: doc.title,
     subject: doc.subject,
     summary: doc.summary,
@@ -56,7 +57,8 @@ export function serializePresentation(doc: PresentationDocument) {
       audioUrl: toPublicUrl(slide.audioPath),
       audioDurationSec: slide.audioDurationSec ?? null,
     })),
-    quiz: doc.quiz,
+    // Answer key withheld until grading — see submitQuizAttempt for the graded response.
+    quiz: doc.quiz.map((q) => ({ question: q.question, options: q.options })),
     assets: {
       pptUrl: toPublicUrl(doc.pptPath),
       pdfUrl: toPublicUrl(doc.pdfPath),

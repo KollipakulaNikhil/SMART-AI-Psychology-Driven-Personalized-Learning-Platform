@@ -84,6 +84,12 @@ async function requestGroq(prompt: string, model: string, maxTokens: number): Pr
       temperature: 0.7,
       max_tokens: maxTokens,
       response_format: { type: "json_object" },
+      // The current Groq catalog (gpt-oss models) reasons by default, which
+      // burns a large chunk of max_tokens on hidden chain-of-thought before
+      // any JSON is emitted — measured ~240 reasoning tokens for a two-field
+      // object. This is a deterministic extraction task, not one that needs
+      // deep reasoning, so keep effort low to leave the budget for content.
+      reasoning_effort: "low",
     },
     {
       headers: {
@@ -183,7 +189,13 @@ export async function callGroqStrong(prompt: string, maxTokens = 8000): Promise<
 async function requestGroqText(prompt: string, model: string): Promise<string> {
   const { data } = await axios.post(
     GROQ_CHAT_URL,
-    { model, messages: [{ role: "user", content: prompt }], temperature: 0.6, max_tokens: 1024 },
+    {
+      model,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.6,
+      max_tokens: 1024,
+      reasoning_effort: "low",
+    },
     {
       headers: { Authorization: `Bearer ${env.GROQ_API_KEY}`, "Content-Type": "application/json" },
       timeout: 45_000,

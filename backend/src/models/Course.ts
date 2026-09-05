@@ -1,4 +1,5 @@
 import { Schema, model, Document, Types } from "mongoose";
+import { LESSON_LANGUAGES, DEFAULT_LANGUAGE, type LessonLanguage } from "../config/languages";
 
 export type ModuleStatus = "pending" | "generated" | "completed";
 
@@ -17,13 +18,23 @@ export interface CourseModule {
   completedAt?: Date;
 }
 
+export type CourseSourceType = "goal" | "document";
+
 export interface CourseDocument extends Document<Types.ObjectId> {
   userId: Types.ObjectId;
   goal: string;
   title: string;
   description: string;
   subject: string;
+  /** Language the roadmap (and, by extension, its lessons) is planned in. */
+  language: LessonLanguage;
   modules: CourseModule[];
+  /** "document" when planned from an uploaded PDF rather than a typed goal. */
+  sourceType: CourseSourceType;
+  /** Original filename of the uploaded PDF, when sourceType is "document". */
+  sourceFileName?: string;
+  /** Useful topics the AI added beyond what the source document covers. */
+  enrichment: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -50,7 +61,11 @@ const courseSchema = new Schema<CourseDocument>(
     title: { type: String, required: true },
     description: { type: String, default: "" },
     subject: { type: String, default: "General" },
+    language: { type: String, enum: LESSON_LANGUAGES, default: DEFAULT_LANGUAGE },
     modules: { type: [moduleSchema], default: [] },
+    sourceType: { type: String, enum: ["goal", "document"], default: "goal" },
+    sourceFileName: { type: String },
+    enrichment: { type: [String], default: [] },
   },
   { timestamps: true }
 );

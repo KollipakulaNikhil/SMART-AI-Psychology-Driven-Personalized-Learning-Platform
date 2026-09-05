@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   generateAudio,
   generateContent,
+  generateContentFromPdf,
   generatePpt,
   generateVideo,
   type GenerateContentPayload,
@@ -69,7 +70,8 @@ export interface UseGeneratePipelineResult {
   running: boolean;
   error: string | null;
   lesson: PresentationDetail | null;
-  run: (payload: GenerateContentPayload) => Promise<PresentationDetail | null>;
+  /** `file` grounds the lesson in an uploaded PDF's text instead of the topic alone. */
+  run: (payload: GenerateContentPayload, file?: File) => Promise<PresentationDetail | null>;
   reset: () => void;
 }
 
@@ -97,7 +99,7 @@ export function useGeneratePipeline(): UseGeneratePipelineResult {
   }, []);
 
   const run = useCallback(
-    async (payload: GenerateContentPayload): Promise<PresentationDetail | null> => {
+    async (payload: GenerateContentPayload, file?: File): Promise<PresentationDetail | null> => {
       if (runningRef.current) return null;
       runningRef.current = true;
       setRunning(true);
@@ -124,7 +126,7 @@ export function useGeneratePipeline(): UseGeneratePipelineResult {
           );
         }
         setStepState("content", "running");
-        current = await generateContent(payload);
+        current = file ? await generateContentFromPdf(file, payload) : await generateContent(payload);
         setLesson(current);
         setStepState("content", "done");
         const lessonId = current.id;

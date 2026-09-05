@@ -172,7 +172,7 @@ function DiagramBoxes({
   isVisible,
   isActive,
 }: {
-  type: "flow" | "cycle" | "compare" | "list" | "none";
+  type: "flow" | "cycle" | "compare" | "list" | "timeline" | "hierarchy" | "none";
   nodes: string[];
   isVisible: (index: number) => boolean;
   isActive: (index: number) => boolean;
@@ -224,6 +224,64 @@ function DiagramBoxes({
             isVisible(i) ? nodeBox(node, i, "border-indigo-400/70 bg-indigo-500/10 !text-left") : null
           )}
         </AnimatePresence>
+      </div>
+    );
+  }
+
+  // timeline — a vertical rail with a dot per event, dot glows while active.
+  if (type === "timeline") {
+    return (
+      <div className="relative flex flex-col gap-4 pl-7">
+        <div className="absolute bottom-2 left-[9px] top-2 w-px bg-gradient-to-b from-cyan-400/70 via-violet-400/40 to-transparent" />
+        <AnimatePresence>
+          {nodes.map((node, i) =>
+            isVisible(i) ? (
+              <div key={i} className="relative flex items-start">
+                <span
+                  className={cn(
+                    "absolute -left-7 top-3 h-3.5 w-3.5 shrink-0 rounded-full border-2 bg-[#0B1120] transition-shadow",
+                    isActive(i)
+                      ? "border-cyan-300 shadow-[0_0_10px_2px_rgba(103,232,249,0.6)]"
+                      : "border-cyan-400/60"
+                  )}
+                />
+                <div className="w-full">
+                  {nodeBox(node, i, "!text-left border-cyan-400/60 bg-cyan-500/10")}
+                </div>
+              </div>
+            ) : null
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  }
+
+  // hierarchy — a top-down breakdown, each level narrower than the last.
+  if (type === "hierarchy") {
+    return (
+      <div className="flex flex-col items-center">
+        {nodes.map((node, i) =>
+          isVisible(i) ? (
+            <div
+              key={i}
+              className="flex w-full flex-col items-center"
+              style={{ width: `${Math.max(48, 100 - i * 13)}%` }}
+            >
+              {i > 0 && <Connector draw={isVisible(i)} />}
+              <div className="w-full">
+                {nodeBox(
+                  node,
+                  i,
+                  i === 0
+                    ? "border-violet-400 bg-violet-500/15"
+                    : i % 2
+                      ? "border-cyan-400 bg-cyan-500/10"
+                      : "border-indigo-400 bg-indigo-500/15"
+                )}
+              </div>
+            </div>
+          ) : null
+        )}
       </div>
     );
   }
@@ -320,6 +378,11 @@ export function BoardSlideView({ slide, elapsed, durationSec, onTermClick }: Boa
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Left: key terms + notes */}
           <div className="space-y-5">
+            {terms.some((_, i) => isVisible("term", i)) && (
+              <p className="pl-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Key terms
+              </p>
+            )}
             <ul className="space-y-2.5 pl-4">
               <AnimatePresence>
                 {/* Keyed by position — the model can repeat a key term, and a
@@ -361,6 +424,9 @@ export function BoardSlideView({ slide, elapsed, durationSec, onTermClick }: Boa
 
             {anyNoteVisible && (
               <div className="space-y-2 border-l-2 border-violet-400/40 pl-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-400/70">
+                  Notes
+                </p>
                 <AnimatePresence>
                   {notes.map((note, i) =>
                     isVisible("note", i) ? (
@@ -368,7 +434,7 @@ export function BoardSlideView({ slide, elapsed, durationSec, onTermClick }: Boa
                         key={i}
                         {...writeOn}
                         className={cn(
-                          "relative text-sm transition-colors",
+                          "relative text-sm leading-relaxed transition-colors",
                           isActive("note", i) ? "text-slate-200" : "text-slate-400"
                         )}
                         style={{ fontFamily: HAND_FONT }}

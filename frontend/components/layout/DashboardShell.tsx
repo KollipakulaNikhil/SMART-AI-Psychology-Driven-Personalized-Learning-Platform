@@ -17,10 +17,12 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { Logo } from "./Logo";
+import { ThemeToggle } from "./ThemeToggle";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { pageTransition } from "@/lib/motion";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
@@ -30,7 +32,9 @@ const NAV_ITEMS = [
   { href: "/dashboard/profile", label: "Learning profile", icon: BrainCog, exact: false },
 ];
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+/** `scope` keeps the desktop and mobile-drawer instances' shared layoutId from colliding
+ *  when both are mounted at once (drawer open on a lg+ viewport, or during its exit anim). */
+function NavLinks({ onNavigate, scope }: { onNavigate?: () => void; scope: string }) {
   const pathname = usePathname();
 
   return (
@@ -43,14 +47,19 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             href={href}
             onClick={onNavigate}
             className={cn(
-              "flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors",
-              active
-                ? "bg-primary/15 text-primary"
-                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+              "relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors",
+              active ? "text-primary" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
             )}
           >
-            <Icon className="h-4 w-4" aria-hidden />
-            {label}
+            {active && (
+              <motion.span
+                layoutId={`nav-pill-${scope}`}
+                className="absolute inset-0 rounded-xl bg-primary/15"
+                transition={{ type: "spring", stiffness: 400, damping: 32 }}
+              />
+            )}
+            <Icon className="relative h-4 w-4" aria-hidden />
+            <span className="relative">{label}</span>
           </Link>
         );
       })}
@@ -139,22 +148,28 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-card/40 p-5 backdrop-blur-xl lg:flex">
-        <Logo href="/dashboard" className="mb-8 px-2" />
-        <NavLinks />
+        <div className="mb-8 flex items-center justify-between px-2">
+          <Logo href="/dashboard" />
+          <ThemeToggle />
+        </div>
+        <NavLinks scope="desktop" />
         <UserSection />
       </aside>
 
       {/* Mobile header */}
       <div className="fixed inset-x-0 top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-xl lg:hidden">
         <Logo href="/dashboard" />
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setMobileOpen((open) => !open)}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileOpen((open) => !open)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
+        </div>
       </div>
 
       {/* Mobile drawer */}
@@ -176,7 +191,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               className="fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-border bg-card p-5 lg:hidden"
             >
               <Logo href="/dashboard" className="mb-8 px-2" />
-              <NavLinks onNavigate={() => setMobileOpen(false)} />
+              <NavLinks onNavigate={() => setMobileOpen(false)} scope="mobile" />
               <UserSection />
             </motion.aside>
           </>
@@ -184,7 +199,21 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       </AnimatePresence>
 
       <main className="flex-1 px-4 pb-16 pt-24 sm:px-6 lg:ml-64 lg:px-10 lg:pt-10">
-        <div className="mx-auto w-full max-w-6xl">{children}</div>
+        {/* popLayout lets the incoming page start fading in immediately instead of
+            waiting on the outgoing one — frequent in-app nav should feel snappy,
+            not like a page-load. */}
+        <AnimatePresence mode="popLayout">
+          <motion.div
+            key={pathname}
+            initial="hidden"
+            animate="show"
+            exit="exit"
+            variants={pageTransition}
+            className="mx-auto w-full max-w-6xl"
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );

@@ -49,6 +49,20 @@ function chunk<T>(items: T[], size: number): T[][] {
 }
 
 /**
+ * Truncates text that would overflow a fixed-size box — PowerPoint doesn't
+ * wrap-and-shrink for us, it silently runs the text past the box (and often
+ * past whatever is drawn next), which reads as a rendering bug. A hard cap
+ * with an ellipsis, cut on a word boundary, beats that every time.
+ */
+function clip(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  const cut = text.slice(0, maxChars);
+  const lastSpace = cut.lastIndexOf(" ");
+  const trimmed = lastSpace > maxChars * 0.6 ? cut.slice(0, lastSpace) : cut;
+  return `${trimmed.trimEnd()}…`;
+}
+
+/**
  * Builds the downloadable 16:9 deck.
  *
  * The deck is a STUDY HANDOUT, not a slideshow transcript. A concept page
@@ -96,10 +110,20 @@ export async function buildPptx(input: PptBuildInput): Promise<string> {
       x: 0.55, y: 0.34, w: 11.0, h: 0.3,
       fontSize: 12, bold: true, color: kickerColor, fontFace: FONT, charSpacing: 2,
     });
-    slide.addText(heading, {
-      x: 0.55, y: 0.66, w: PAGE_W - 1.4, h: 0.72,
-      fontSize: 26, bold: true, color: THEME.text, fontFace: FONT, valign: "middle",
-    });
+    slide.addText(
+      // Clipped to keep this 26pt bold heading to at most 2 lines — the box
+      // is only 0.72in tall (~2 lines' worth) and the accent rule right below
+      // it ends at y:1.51. The Notes/Example pages' RIGHT-column card starts
+      // at y:1.55, just 0.04in below that rule, so a 3rd wrapped line here
+      // would run straight into it. Bold Segoe UI at 26pt in an 11.93in box
+      // averages ~60-65 chars/line, so 2 lines is ~120-130 chars, but bold
+      // caps run wider than average — rounded well down to leave slack.
+      clip(heading, 100),
+      {
+        x: 0.55, y: 0.66, w: PAGE_W - 1.4, h: 0.72,
+        fontSize: 26, bold: true, color: THEME.text, fontFace: FONT, valign: "middle",
+      }
+    );
     slide.addShape("roundRect", { x: 0.58, y: 1.42, w: 0.85, h: 0.09, rectRadius: 0.045, fill: { color: kickerColor } });
   }
 
@@ -193,18 +217,26 @@ export async function buildPptx(input: PptBuildInput): Promise<string> {
     addHeader(slide, `Notes ${String(index + 1).padStart(2, "0")} · write this down`, slideTitle);
 
     addLabel(slide, "The idea, written out", LEFT.x, 1.62, LEFT.w);
-    slide.addText(notes.explanation, {
-      x: LEFT.x, y: 1.95, w: LEFT.w, h: 2.4,
-      fontSize: 13, color: THEME.text, fontFace: FONT, valign: "top", lineSpacingMultiple: 1.25,
-    });
+    slide.addText(
+      // Capped so a max-length explanation can't spill into the "Remember"
+      // label 0.13in below — measured against this box's actual width/font.
+      clip(notes.explanation, 600),
+      {
+        x: LEFT.x, y: 1.95, w: LEFT.w, h: 2.4,
+        fontSize: 13, color: THEME.text, fontFace: FONT, valign: "top", lineSpacingMultiple: 1.25,
+      }
+    );
 
     if (notes.keyFacts.length > 0) {
       addLabel(slide, "Remember", LEFT.x, 4.48, LEFT.w, THEME.accent);
       slide.addText(
         // Capped to what the block can hold — PowerPoint silently overflows
-        // rather than clipping, so a long list would run off the page.
+        // rather than clipping, so a long list would run off the page. The
+        // count alone isn't enough: three facts at the schema's own max
+        // length still measure taller than this box, so each fact is also
+        // clipped to what its share of the box can hold.
         notes.keyFacts.slice(0, 3).map((fact) => ({
-          text: fact,
+          text: clip(fact, 130),
           options: {
             bullet: { code: "25AA", indent: 16 },
             color: THEME.text,
@@ -224,11 +256,13 @@ export async function buildPptx(input: PptBuildInput): Promise<string> {
       addLabel(slide, "Key terms", RIGHT.x, 1.72, RIGHT.w, THEME.accent);
       slide.addText(
         // Term and meaning are two runs of one paragraph: only the meaning
-        // breaks the line, so the pair never splits across the card.
+        // breaks the line, so the pair never splits across the card. The
+        // meaning is clipped so three max-length definitions can't push the
+        // last one past the card's bottom edge.
         notes.definitions.slice(0, 3).flatMap((definition) => [
           { text: definition.term, options: { bold: true, color: THEME.accent, fontSize: 12 } },
           {
-            text: ` — ${definition.meaning}`,
+            text: ` — ${clip(definition.meaning, 120)}`,
             options: { color: THEME.text, fontSize: 12, breakLine: true, paraSpaceAfter: 12 },
           },
         ]),
@@ -244,7 +278,7 @@ export async function buildPptx(input: PptBuildInput): Promise<string> {
         x: RIGHT.cardX, y: 5.32, w: RIGHT.cardW, h: 1.58, rectRadius: 0.14, fill: { color: THEME.card },
       });
       addLabel(slide, "Careful here", RIGHT.x, 5.48, RIGHT.w, THEME.warn);
-      slide.addText(notes.commonMistake, {
+      slide.addText(clip(notes.commonMistake, 180), {
         x: RIGHT.x, y: 5.8, w: RIGHT.w, h: 1.0,
         fontSize: 13, color: THEME.text, fontFace: FONT, valign: "top", lineSpacingMultiple: 1.15,
       });
@@ -261,13 +295,18 @@ export async function buildPptx(input: PptBuildInput): Promise<string> {
       slide.addShape("roundRect", {
         x: LEFT.x - 0.1, y: 1.92, w: LEFT.w + 0.2, h: 0.95, rectRadius: 0.12, fill: { color: THEME.card },
       });
-      slide.addText(notes.example.problem, {
+      // Clipped to what the 0.95in card can hold — a max-length problem
+      // statement would otherwise run past the card into the steps below it.
+      slide.addText(clip(notes.example.problem, 130), {
         x: LEFT.x, y: 2.0, w: LEFT.w, h: 0.8,
         fontSize: 14, bold: true, color: THEME.text, fontFace: FONT, valign: "middle", lineSpacingMultiple: 1.1,
       });
       slide.addText(
+        // Six max-length (200-char) steps measure to over 5in in this 3.7in
+        // box — clipped to 150 so every step wraps to at most two lines,
+        // which keeps all six on the page instead of dropping one.
         notes.example.steps.slice(0, 6).map((step, stepIndex) => ({
-          text: `${stepIndex + 1}.  ${step}`,
+          text: `${stepIndex + 1}.  ${clip(step, 150)}`,
           options: { color: THEME.text, fontSize: 12, paraSpaceAfter: 10 },
         })),
         { x: LEFT.x, y: 3.05, w: LEFT.w, h: 3.7, fontFace: FONT, valign: "top", lineSpacingMultiple: 1.2 }
@@ -309,7 +348,10 @@ export async function buildPptx(input: PptBuildInput): Promise<string> {
       slide.addText(`${number}`, {
         x: 0.72, y: y + 0.12, w: 0.5, h: 0.5, fontSize: 18, bold: true, color: THEME.accent, fontFace: FONT,
       });
-      slide.addText(item.question, {
+      // Clipped — this card is shorter than the "Now you try" card the same
+      // question renders in on the example page, so a max-length question
+      // that fits there would still crowd the caption directly below here.
+      slide.addText(clip(item.question, 190), {
         x: 1.3, y: y + 0.12, w: PAGE_W - 2.1, h: 0.62,
         fontSize: 14, color: THEME.text, fontFace: FONT, valign: "top", lineSpacingMultiple: 1.1,
       });
@@ -332,13 +374,22 @@ export async function buildPptx(input: PptBuildInput): Promise<string> {
     group.forEach((question, itemIndex) => {
       const number = pageIndex * 2 + itemIndex + 1;
       const y = 1.72 + itemIndex * 2.62;
-      slide.addText(`${number}.  ${question.question}`, {
+      // Clipped — the option list starts a fixed 0.68in below regardless of
+      // how tall the question box actually renders, so a max-length (300
+      // char) question would already be crowding the first option's line.
+      slide.addText(`${number}.  ${clip(question.question, 190)}`, {
         x: 0.55, y, w: PAGE_W - 1.1, h: 0.7,
         fontSize: 15, bold: true, color: THEME.text, fontFace: FONT, valign: "top", lineSpacingMultiple: 1.1,
       });
+      // Clipped — all four options share this single 1.7in box, so at 13pt
+      // with 1.1 line spacing plus 6pt after each paragraph, every option
+      // only has room for a bit over one wrapped line before the fourth
+      // option gets pushed past the box's bottom edge. A max-length
+      // (160-char) option would need close to two lines, so it's capped
+      // well below that.
       slide.addText(
         question.options.map((option, optionIndex) => ({
-          text: `${optionLabels[optionIndex]})  ${option}`,
+          text: `${optionLabels[optionIndex]})  ${clip(option, 130)}`,
           options: { color: THEME.muted, fontSize: 13, paraSpaceAfter: 6 },
         })),
         { x: 0.95, y: y + 0.68, w: PAGE_W - 1.9, h: 1.7, fontFace: FONT, valign: "top", lineSpacingMultiple: 1.1 }
@@ -357,13 +408,20 @@ export async function buildPptx(input: PptBuildInput): Promise<string> {
         THEME.warn
       );
       slide.addText(
+        // Clipped — this 5.1in box is shared by up to 4 question+answer pairs,
+        // so at 13pt with 1.15 line spacing (~15pt/line) plus the 16pt gap
+        // after each answer, an entry only has room for ~5 lines before the
+        // fourth pair is pushed past the box's bottom edge. Split
+        // conservatively (question ~1.5 lines, answer ~1.6 lines) with slack
+        // left over, since an unbounded question or answer would otherwise
+        // overflow the box outright.
         group.flatMap((item, itemIndex) => [
           {
-            text: `${pageIndex * 4 + itemIndex + 1}.  ${item.question}`,
+            text: `${pageIndex * 4 + itemIndex + 1}.  ${clip(item.question, 200)}`,
             options: { bold: true, color: THEME.text, fontSize: 13, breakLine: true },
           },
           {
-            text: item.answer,
+            text: clip(item.answer, 220),
             options: { color: THEME.muted, fontSize: 13, breakLine: true, paraSpaceAfter: 16 },
           },
         ]),
@@ -382,16 +440,23 @@ export async function buildPptx(input: PptBuildInput): Promise<string> {
         THEME.warn
       );
       slide.addText(
+        // Clipped — this 5.1in box is shared by up to 3 answer+explanation
+        // pairs, so at ~14pt/13pt with 1.15 line spacing (~15-16pt/line) plus
+        // the 18pt gap after each explanation, an entry only has room for
+        // ~6-7 lines before the third pair is pushed past the box's bottom
+        // edge. The correct-option line is capped short (it's usually just
+        // the option text) and the explanation gets the larger share, both
+        // well under budget so a run of three long entries still fits.
         group.flatMap((question, itemIndex) => {
           const number = pageIndex * 3 + itemIndex + 1;
-          const correct = question.options[question.correctIndex] ?? "";
+          const correct = clip(question.options[question.correctIndex] ?? "", 150);
           return [
             {
               text: `${number}.  ${optionLabels[question.correctIndex] ?? "?"} — ${correct}`,
               options: { bold: true, color: THEME.accent, fontSize: 14, breakLine: true },
             },
             {
-              text: question.explanation,
+              text: clip(question.explanation, 280),
               options: { color: THEME.muted, fontSize: 13, breakLine: true, paraSpaceAfter: 18 },
             },
           ];

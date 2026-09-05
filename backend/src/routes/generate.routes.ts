@@ -3,10 +3,13 @@ import { z } from "zod";
 import { Types } from "mongoose";
 import { requireAuth } from "../middleware/auth";
 import { validate } from "../middleware/validate";
+import { uploadSinglePdf } from "../middleware/upload";
 import { generationRateLimiter } from "../middleware/rateLimiter";
 import {
   generateAudio,
   generateContent,
+  generateContentFromPdf,
+  generateContentFromPdfSchema,
   generateContentSchema,
   generatePpt,
   generateVideo,
@@ -26,9 +29,16 @@ router.use(requireAuth);
 router.get("/languages", listLessonLanguages);
 
 router.post("/content", generationRateLimiter, validate({ body: generateContentSchema }), generateContent);
-router.post("/ppt", validate({ body: presentationIdSchema }), generatePpt);
-router.post("/audio", validate({ body: presentationIdSchema }), generateAudio);
-router.post("/video", validate({ body: presentationIdSchema }), generateVideo);
+router.post(
+  "/content/from-pdf",
+  generationRateLimiter,
+  uploadSinglePdf("file"),
+  validate({ body: generateContentFromPdfSchema }),
+  generateContentFromPdf
+);
+router.post("/ppt", generationRateLimiter, validate({ body: presentationIdSchema }), generatePpt);
+router.post("/audio", generationRateLimiter, validate({ body: presentationIdSchema }), generateAudio);
+router.post("/video", generationRateLimiter, validate({ body: presentationIdSchema }), generateVideo);
 router.get("/:id", validate({ params: idParam }), getPresentation);
 
 export default router;

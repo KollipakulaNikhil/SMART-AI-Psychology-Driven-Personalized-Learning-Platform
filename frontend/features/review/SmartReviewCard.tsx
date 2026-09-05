@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BrainCircuit, CalendarClock, Flame } from "lucide-react";
+import { BrainCircuit, CalendarClock, Flame, Mountain } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,12 +66,20 @@ export function SmartReviewCard() {
                   Last score {item.lastScorePct}% · review #{item.repetitions + 1}
                 </p>
               </div>
-              <Link
-                href={`/dashboard/lesson/${item.presentationId}#quiz`}
-                className={buttonVariants({ variant: "secondary", size: "sm" })}
-              >
-                Review
-              </Link>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <Link
+                  href={`/dashboard/lesson/${item.presentationId}/play`}
+                  className={buttonVariants({ variant: "gradient", size: "sm" })}
+                >
+                  <Mountain className="h-3.5 w-3.5" /> Play
+                </Link>
+                <Link
+                  href={`/dashboard/lesson/${item.presentationId}#quiz`}
+                  className={buttonVariants({ variant: "ghost", size: "sm" })}
+                >
+                  Quiz
+                </Link>
+              </div>
             </div>
           ))
         )}

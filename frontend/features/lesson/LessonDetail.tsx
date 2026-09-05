@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -13,12 +14,13 @@ import {
   Film,
   Languages,
   Loader2,
+  Mountain,
   Presentation as PresentationIcon,
   UserRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLesson } from "@/hooks/useLessons";
@@ -27,7 +29,7 @@ import { downloadLessonAsset, generateVideo, type DownloadableAsset } from "@/se
 import { toErrorMessage } from "@/services/api";
 import { LESSON_LANGUAGE_LABELS, staticUrl } from "@/lib/constants";
 import { cn, formatDate, titleCase } from "@/lib/utils";
-import type { QuizAttemptResult } from "@/lib/types";
+import type { QuizAttemptResult, QuizQuestion } from "@/lib/types";
 import { TutorChat } from "./TutorChat";
 import { InteractiveLesson } from "./InteractiveLesson";
 
@@ -157,7 +159,7 @@ function Quiz({
   questions,
 }: {
   lessonId: string;
-  questions: { question: string; options: string[]; correctIndex: number; explanation: string }[];
+  questions: QuizQuestion[];
 }) {
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [result, setResult] = useState<QuizAttemptResult | null>(null);
@@ -187,12 +189,20 @@ function Quiz({
 
   return (
     <Card id="quiz">
-      <CardHeader>
-        <CardTitle>Check your understanding</CardTitle>
-        <CardDescription>
-          Finish the quiz to record your mastery — Smart Review schedules your next revision
-          automatically.
-        </CardDescription>
+      <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
+        <div>
+          <CardTitle>Check your understanding</CardTitle>
+          <CardDescription>
+            Finish the quiz to record your mastery — Smart Review schedules your next revision
+            automatically.
+          </CardDescription>
+        </div>
+        <Link
+          href={`/dashboard/lesson/${lessonId}/play`}
+          className={cn(buttonVariants({ variant: "gradient", size: "sm" }), "shrink-0")}
+        >
+          <Mountain className="h-3.5 w-3.5" /> Play as a climb
+        </Link>
       </CardHeader>
       <CardContent className="space-y-6">
         {questions.map((quizItem, questionIndex) => {
@@ -204,7 +214,8 @@ function Quiz({
               </p>
               <div className="grid gap-2 sm:grid-cols-2">
                 {quizItem.options.map((option, optionIndex) => {
-                  const isCorrect = optionIndex === quizItem.correctIndex;
+                  const answer = result?.answerKey[questionIndex];
+                  const isCorrect = graded && answer !== undefined && optionIndex === answer.correctIndex;
                   const isPicked = picked === optionIndex;
                   return (
                     <button
@@ -230,14 +241,14 @@ function Quiz({
                   );
                 })}
               </div>
-              {graded && (
+              {graded && result && (
                 <motion.p
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="mt-2 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground"
                 >
-                  {picked === quizItem.correctIndex ? "Correct — " : "Not quite — "}
-                  {quizItem.explanation}
+                  {picked === result.answerKey[questionIndex].correctIndex ? "Correct — " : "Not quite — "}
+                  {result.answerKey[questionIndex].explanation}
                 </motion.p>
               )}
             </div>
@@ -371,6 +382,11 @@ export function LessonDetail({ lessonId }: { lessonId: string }) {
               <UserRound className="h-3 w-3" /> AI presenter
             </Badge>
           )}
+          {lesson.sourceFileName && (
+            <Badge variant="outline">
+              <FileText className="h-3 w-3" /> From {lesson.sourceFileName}
+            </Badge>
+          )}
         </div>
         <h1 className="text-2xl font-bold sm:text-3xl">{lesson.title || lesson.topic}</h1>
         <p className="mt-2 max-w-3xl text-muted-foreground">{lesson.summary}</p>
@@ -436,8 +452,8 @@ export function LessonDetail({ lessonId }: { lessonId: string }) {
           {videoProcessing && (
             <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              Building the video on the server — this can take a few minutes
-              {lesson.hasAvatar ? " (longer with the AI presenter)" : ""}…
+              Building the video on the server — this can take a few minutes (longer if the AI
+              presenter is enabled)…
               {/*
                 The server refuses to start a second render over a running one,
                 so offering "Restart" here would silently do nothing. Re-checking

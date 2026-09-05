@@ -1,4 +1,4 @@
-import { apiDownload, apiGet, apiPost } from "./api";
+import { apiDownload, apiGet, apiPost, apiPostForm } from "./api";
 import type {
   AnalyticsData,
   CourseView,
@@ -7,6 +7,7 @@ import type {
   LessonLanguage,
   LessonLanguageOption,
   LessonListData,
+  PlayAnswerResult,
   PresentationDetail,
   QuestionnaireAnswer,
   QuestionView,
@@ -48,6 +49,21 @@ export const generateContent = (payload: GenerateContentPayload) =>
     ...payload,
     focus: payload.focus || undefined,
   });
+/** Same as `generateContent`, but grounds the lesson in an uploaded PDF's text. */
+export const generateContentFromPdf = (file: File, payload: GenerateContentPayload) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("topic", payload.topic);
+  if (payload.focus) formData.append("focus", payload.focus);
+  if (payload.durationMin !== undefined) formData.append("durationMin", String(payload.durationMin));
+  if (payload.detailLevel) formData.append("detailLevel", payload.detailLevel);
+  if (payload.subtitles !== undefined) formData.append("subtitles", String(payload.subtitles));
+  if (payload.language) formData.append("language", payload.language);
+  if (payload.boardLanguage) formData.append("boardLanguage", payload.boardLanguage);
+  if (payload.courseId) formData.append("courseId", payload.courseId);
+  if (payload.moduleIndex !== undefined) formData.append("moduleIndex", String(payload.moduleIndex));
+  return apiPostForm<PresentationDetail>("/generate/content/from-pdf", formData);
+};
 export const generatePpt = (presentationId: string) =>
   apiPost<PresentationDetail>("/generate/ppt", { presentationId });
 export const generateAudio = (presentationId: string) =>
@@ -63,7 +79,14 @@ export const listRecentTopics = () => apiGet<RecentTopicView[]>("/history/recent
 export const getAnalytics = () => apiGet<AnalyticsData>("/analytics");
 
 // ── Learning Paths ──────────────────────────────────────────────────────────
-export const createCourse = (goal: string) => apiPost<CourseView>("/courses", { goal });
+export const createCourse = (goal: string, language: LessonLanguage) =>
+  apiPost<CourseView>("/courses", { goal, language });
+export const createCourseFromPdf = (file: File, language: LessonLanguage) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("language", language);
+  return apiPostForm<CourseView>("/courses/from-pdf", formData);
+};
 export const listCourses = () => apiGet<CourseView[]>("/courses");
 export const getCourse = (id: string) => apiGet<CourseView>(`/courses/${id}`);
 
@@ -71,6 +94,9 @@ export const getCourse = (id: string) => apiGet<CourseView>(`/courses/${id}`);
 export const getDueReviews = () => apiGet<DueReviewsData>("/review/due");
 export const submitQuizAttempt = (presentationId: string, answers: number[]) =>
   apiPost<QuizAttemptResult>("/review/quiz-attempt", { presentationId, answers });
+/** Game mode: grade a single question (answer `null` = the timer ran out). */
+export const checkPlayAnswer = (presentationId: string, questionIndex: number, answer: number | null) =>
+  apiPost<PlayAnswerResult>("/review/play-answer", { presentationId, questionIndex, answer });
 
 // ── AI Tutor ────────────────────────────────────────────────────────────────
 export interface TutorTurn {

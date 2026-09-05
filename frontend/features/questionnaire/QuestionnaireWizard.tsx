@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useQuestions, useSubmitQuestionnaire } from "@/hooks/useQuestionnaire";
 import { toErrorMessage } from "@/services/api";
 import { cn } from "@/lib/utils";
+import { stepSlide, springSnappy, tapScale, hoverLift } from "@/lib/motion";
 import type { LearningProfileData } from "@/lib/types";
 import { ProfileReveal } from "./ProfileReveal";
 
@@ -24,6 +25,7 @@ export function QuestionnaireWizard() {
   const submitMutation = useSubmitQuestionnaire();
 
   const [step, setStep] = useState(0);
+  const [direction, setDirection] = useState<1 | -1>(1);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [result, setResult] = useState<LearningProfileData | null>(null);
 
@@ -60,6 +62,11 @@ export function QuestionnaireWizard() {
     );
   }
 
+  const goTo = (next: number) => {
+    setDirection(next > step ? 1 : -1);
+    setStep(next);
+  };
+
   const toggle = (optionId: string) => {
     if (!current) return;
     setAnswers((prev) => {
@@ -74,7 +81,7 @@ export function QuestionnaireWizard() {
   const finish = async () => {
     const missingIndex = questions.findIndex((question) => !(answers[question.id]?.length > 0));
     if (missingIndex !== -1) {
-      setStep(missingIndex);
+      goTo(missingIndex);
       toast.error("A few questions are still unanswered.");
       return;
     }
@@ -100,18 +107,28 @@ export function QuestionnaireWizard() {
           <span>
             Question {step + 1} of {total}
           </span>
-          <span>{Math.round(progress)}% mapped</span>
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium tabular-nums transition-colors",
+              answeredAll ? "bg-amber/15 text-amber" : "text-muted-foreground"
+            )}
+          >
+            {answeredAll && <Sparkles className="h-3 w-3" aria-hidden />}
+            {Math.round(progress)}% mapped
+          </span>
         </div>
         <Progress value={progress} />
       </div>
 
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="wait" custom={direction}>
         <motion.div
           key={current?.id}
-          initial={{ opacity: 0, x: 32 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -32 }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
+          custom={direction}
+          variants={stepSlide}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          className="rounded-3xl border border-border/60 bg-card p-6 shadow-soft sm:p-8"
         >
           <div className="mb-3 flex items-center gap-2">
             <Badge variant="accent">{current?.category}</Badge>
@@ -123,14 +140,17 @@ export function QuestionnaireWizard() {
             {current?.options.map((option) => {
               const isSelected = selected.includes(option.id);
               return (
-                <button
+                <motion.button
                   key={option.id}
                   type="button"
                   role="checkbox"
                   aria-checked={isSelected}
                   onClick={() => toggle(option.id)}
+                  whileHover={hoverLift}
+                  whileTap={tapScale}
                   className={cn(
-                    "flex w-full items-center justify-between gap-3 rounded-2xl border p-4 text-left text-sm transition-all sm:text-base",
+                    "flex w-full items-center justify-between gap-3 rounded-2xl border p-4 text-left text-sm sm:text-base",
+                    "transition-[border-color,background-color,box-shadow] duration-200",
                     isSelected
                       ? "border-primary bg-primary/10 shadow-lg shadow-primary/10"
                       : "border-border bg-card hover:border-primary/50 hover:bg-muted/40"
@@ -143,9 +163,21 @@ export function QuestionnaireWizard() {
                       isSelected ? "border-primary bg-primary text-white" : "border-border"
                     )}
                   >
-                    {isSelected && <Check className="h-3.5 w-3.5" />}
+                    <AnimatePresence>
+                      {isSelected && (
+                        <motion.span
+                          initial={{ scale: 0, rotate: -45, opacity: 0 }}
+                          animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                          exit={{ scale: 0, opacity: 0 }}
+                          transition={springSnappy}
+                          className="flex"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
                   </span>
-                </button>
+                </motion.button>
               );
             })}
           </div>
@@ -153,14 +185,29 @@ export function QuestionnaireWizard() {
       </AnimatePresence>
 
       <div className="mt-8 flex items-center justify-between">
-        <Button variant="ghost" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0}>
+        <Button variant="ghost" onClick={() => goTo(Math.max(0, step - 1))} disabled={step === 0}>
           <ArrowLeft className="h-4 w-4" /> Back
         </Button>
 
         {step < total - 1 ? (
-          <Button variant="secondary" onClick={() => setStep((s) => s + 1)} disabled={selected.length === 0}>
-            Next <ArrowRight className="h-4 w-4" />
-          </Button>
+          <AnimatePresence mode="wait">
+            {selected.length > 0 ? (
+              <motion.div
+                key="next"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={springSnappy}
+              >
+                <Button variant="secondary" onClick={() => goTo(step + 1)}>
+                  Next <ArrowRight className="h-4 w-4" />
+                </Button>
+              </motion.div>
+            ) : (
+              <Button key="next-disabled" variant="secondary" disabled>
+                Next <ArrowRight className="h-4 w-4" />
+              </Button>
+            )}
+          </AnimatePresence>
         ) : (
           <Button
             variant="gradient"

@@ -48,6 +48,11 @@ const config: Config = {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        /* Progress/achievement signal only — see globals.css note. */
+        amber: {
+          DEFAULT: "hsl(var(--amber))",
+          foreground: "hsl(var(--amber-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
@@ -90,16 +95,54 @@ const config: Config = {
           "0%": { transform: "translateX(-120%)" },
           "100%": { transform: "translateX(120%)" },
         },
+        "sheen-y": {
+          "0%": { transform: "translateY(-120%)" },
+          "100%": { transform: "translateY(120%)" },
+        },
         marquee: {
           "0%": { transform: "translateX(0)" },
           "100%": { transform: "translateX(-50%)" },
+        },
+        "spin-slow": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+        // Knowledge Climb (game) — stars, clouds and the summit confetti.
+        twinkle: {
+          "0%, 100%": { opacity: "0.25" },
+          "50%": { opacity: "1" },
+        },
+        drift: {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-140px)" },
+        },
+        confetti: {
+          "0%": { transform: "translate3d(0,-20px,0) rotate(0deg)", opacity: "1" },
+          "80%": { opacity: "1" },
+          "100%": { transform: "translate3d(0,720px,0) rotate(720deg)", opacity: "0" },
+        },
+        "float-up": {
+          "0%": { transform: "translateY(0)", opacity: "0" },
+          "15%": { opacity: "1" },
+          "100%": { transform: "translateY(-56px)", opacity: "0" },
         },
       },
       animation: {
         "pulse-soft": "pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         float: "float 14s ease-in-out infinite",
         sheen: "sheen 5s ease-in-out infinite",
+        "sheen-y": "sheen-y 5s ease-in-out infinite",
         marquee: "marquee 40s linear infinite",
+        "spin-slow": "spin-slow 18s linear infinite",
+        shimmer: "shimmer 2.5s ease-in-out infinite",
+        twinkle: "twinkle 3s ease-in-out infinite",
+        drift: "drift 60s linear infinite alternate",
+        confetti: "confetti 2.8s cubic-bezier(0.25, 0.8, 0.4, 1) forwards",
+        "float-up": "float-up 1.1s ease-out forwards",
       },
     },
   },

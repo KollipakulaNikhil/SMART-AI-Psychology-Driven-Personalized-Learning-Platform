@@ -45,6 +45,19 @@ export async function apiPost<T>(url: string, body?: unknown): Promise<T> {
   return data.data;
 }
 
+/**
+ * Posts a FormData body (file upload). The instance default `Content-Type:
+ * application/json` header must be cleared for this call — otherwise axios
+ * sees a JSON content-type already set and serializes the FormData as JSON
+ * instead of leaving it for the browser to encode as multipart with a boundary.
+ */
+export async function apiPostForm<T>(url: string, formData: FormData): Promise<T> {
+  const { data } = await api.post<ApiEnvelope<T>>(url, formData, {
+    headers: { "Content-Type": undefined },
+  });
+  return data.data;
+}
+
 /** Streams an authenticated download and hands it to the browser. */
 export async function apiDownload(url: string, fallbackName: string): Promise<void> {
   const response = await api.get<Blob>(url, { responseType: "blob" });

@@ -58,7 +58,7 @@ export async function generateText(prompt: string, label: string): Promise<strin
       );
     }
   }
-  throw lastError instanceof Error ? lastError : new Error(`All configured AI providers failed for ${label}`);
+  throw wrapProviderFailure(lastError, label);
 }
 
 /**
@@ -103,6 +103,26 @@ function noteProviderFailure(provider: Provider, error: unknown): void {
   logger.warn(
     `${provider} is rate-limited — skipping it for ${Math.round(cooldown / 1000)}s so multi-call jobs don't pay a failed round-trip each time`
   );
+}
+
+/**
+ * Turns whatever the last provider threw into a message a learner can actually
+ * act on. Left as-is, a raw Node/SDK error ("getaddrinfo ENOTFOUND
+ * api.groq.com", a bare fetch failure, a Gemini SDK internals string) surfaces
+ * straight into the generation UI — which reads exactly like the feature is
+ * broken, when it's really a transient network/quota blip on the AI provider.
+ */
+function wrapProviderFailure(lastError: unknown, label: string): ApiError {
+  if (lastError instanceof ApiError) return lastError;
+  const message = lastError instanceof Error ? lastError.message : String(lastError);
+  const isNetwork = /ENOTFOUND|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|fetch failed|network/i.test(message);
+  const isRateLimit = /quota|rate.?limit|429|RESOURCE_EXHAUSTED|tokens per minute|TPM/i.test(message);
+  const friendly = isNetwork
+    ? `Couldn't reach the AI service to ${label} — this is usually a brief network hiccup, not a problem with what you submitted. Please try again in a moment.`
+    : isRateLimit
+      ? `The AI service is rate-limited right now. Please wait a minute and try again.`
+      : `The AI service couldn't ${label} right now. Please try again.`;
+  return ApiError.serviceUnavailable(friendly);
 }
 
 /** Gemini first (higher quality), Groq as the fallback — only providers with a configured key are tried. */
@@ -150,7 +170,7 @@ export async function generateLessonContent(
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error("All configured AI providers failed");
+  throw wrapProviderFailure(lastError, "generate your lesson");
 }
 
 /**
@@ -187,5 +207,5 @@ export async function generateStructured<T>(
       );
     }
   }
-  throw lastError instanceof Error ? lastError : new Error(`All configured AI providers failed for ${label}`);
+  throw wrapProviderFailure(lastError, `generate your ${label}`);
 }

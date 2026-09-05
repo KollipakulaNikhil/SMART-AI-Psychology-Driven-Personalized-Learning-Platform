@@ -26,7 +26,12 @@ export async function callGemini(prompt: string): Promise<string> {
           config: {
             temperature: 0.7,
             responseMimeType: "application/json",
-            maxOutputTokens: 8192,
+            // A full lesson (up to 16 slides × deep board notes/diagrams +
+            // points + quiz) can run well past 8192 tokens of JSON — that cap
+            // was silently truncating the largest lessons mid-array, which
+            // reads as "Expected ',' or ']'" JSON parse failures. The model
+            // supports up to 65536; this leaves comfortable headroom.
+            maxOutputTokens: 24576,
           },
         });
         const text = response.text;

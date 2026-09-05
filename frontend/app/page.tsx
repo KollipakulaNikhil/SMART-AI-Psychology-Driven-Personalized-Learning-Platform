@@ -8,6 +8,7 @@ import {
   HowItWorks,
   Navbar,
 } from "@/features/landing/LandingSections";
+import { StatsStrip } from "@/features/landing/StatsStrip";
 
 export default function LandingPage() {
   return (
@@ -15,10 +16,11 @@ export default function LandingPage() {
       <Navbar />
       <main>
         <Hero />
+        <HowItWorks />
         <Difference />
         <BoardSection />
-        <HowItWorks />
         <Capabilities />
+        <StatsStrip />
         <FinalCta />
       </main>
       <Footer />

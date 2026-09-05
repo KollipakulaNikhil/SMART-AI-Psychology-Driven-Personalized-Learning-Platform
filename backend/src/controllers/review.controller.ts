@@ -15,6 +15,41 @@ export const submitQuizSchema = z.object({
   answers: z.array(z.number().int().min(0).max(3)).min(1).max(10),
 });
 
+export const playAnswerSchema = z.object({
+  presentationId: z.string().refine(Types.ObjectId.isValid, "Invalid lesson id"),
+  questionIndex: z.number().int().min(0).max(9),
+  /** Chosen option, or null when the round timer ran out. */
+  answer: z.number().int().min(0).max(3).nullable(),
+});
+
+/**
+ * Grades ONE question for the game mode. The answer key never reaches the
+ * client ahead of time — each question is revealed only after it has been
+ * answered (or timed out), which is what makes the score honest. The game
+ * records the whole run through `submitQuizAttempt` at the summit, so this
+ * endpoint deliberately writes nothing.
+ */
+export const checkPlayAnswer = asyncHandler(async (req, res) => {
+  const user = req.user!;
+  const { presentationId, questionIndex, answer } = req.body as z.infer<typeof playAnswerSchema>;
+
+  const presentation = await Presentation.findById(presentationId).select("userId quiz").lean();
+  if (!presentation) throw ApiError.notFound("Lesson not found");
+  if (String(presentation.userId) !== String(user._id)) throw ApiError.forbidden();
+
+  const question = presentation.quiz[questionIndex];
+  if (!question) throw ApiError.badRequest("No such question");
+
+  res.json({
+    success: true,
+    data: {
+      correct: answer !== null && answer === question.correctIndex,
+      correctIndex: question.correctIndex,
+      explanation: question.explanation,
+    },
+  });
+});
+
 /** Lessons due (or overdue) for a Smart Review, most overdue first. */
 export const listDueReviews = asyncHandler(async (req, res) => {
   const userId = req.user!._id;
@@ -109,6 +144,7 @@ export const submitQuizAttempt = asyncHandler(async (req, res) => {
       nextReviewAt: reviewItem.dueAt,
       intervalDays: reviewItem.intervalDays,
       streak,
+      answerKey: presentation.quiz.map((q) => ({ correctIndex: q.correctIndex, explanation: q.explanation })),
     },
   });
 });

@@ -27,7 +27,7 @@ import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { BoardDemo } from "./BoardDemo";
 import { TryItLive } from "./TryItLive";
-import { LessonVideo } from "./LessonVideo";
+import { VideoHero } from "./VideoHero";
 
 /**
  * Reveal-on-scroll, tuned to be felt but never waited for. `margin: "-40px"`
@@ -50,25 +50,33 @@ const fadeUpAt = (index: number) => ({
 /* ------------------------------------------------------------------ nav --- */
 
 const NAV_LINKS: [label: string, href: string][] = [
+  ["How it works", "#how-it-works"],
   ["Why it's different", "#difference"],
   ["The board", "#board"],
-  ["How it works", "#how-it-works"],
   ["What you get", "#capabilities"],
 ];
 
 export function Navbar() {
   const { firebaseUser } = useAuth();
   const [scrolled, setScrolled] = useState(false);
+  // The hero (`#hero-video` in VideoHero) is permanently dark footage, not a
+  // fade-to-light wash — so the header needs light text for as long as any
+  // part of it is still behind the header, not just "has the user scrolled
+  // at all" (that flips almost immediately, while the hero is still mostly
+  // in view).
+  const [overHero, setOverHero] = useState(true);
   const [progress, setProgress] = useState(0);
   const [activeId, setActiveId] = useState<string>("");
 
-  // Transparent over the hero, frosted once content is behind it — so the bar
-  // never floats as a solid slab across the artwork. Also drives the read
-  // progress bar, so one scroll listener does all of it.
+  // Transparent+light over the hero, frosted+normal once content is behind
+  // it — so the bar never floats as a mismatched slab across the footage.
+  // Also drives the read progress bar, so one scroll listener does all of it.
   useEffect(() => {
     const onScroll = () => {
       const y = window.scrollY;
       setScrolled(y > 12);
+      const heroBottom = document.getElementById("hero-video")?.getBoundingClientRect().bottom ?? 0;
+      setOverHero(heroBottom > 64); // 64px = header height (h-16)
       const scrollable = document.documentElement.scrollHeight - window.innerHeight;
       setProgress(scrollable > 0 ? Math.min(100, (y / scrollable) * 100) : 0);
     };
@@ -104,7 +112,13 @@ export function Navbar() {
     <header
       className={cn(
         "fixed inset-x-0 top-0 z-50 transition-all duration-300",
-        scrolled ? "border-b border-border bg-background/80 backdrop-blur-xl" : "border-b border-transparent"
+        // While any of the (permanently dark) hero footage is still behind the
+        // header, borrow the app's dark palette the same way the hero copy
+        // does — same reasoning as the scoped `.dark` in VideoHero.
+        overHero && "dark",
+        scrolled && !overHero
+          ? "border-b border-border bg-background/80 backdrop-blur-xl"
+          : "border-b border-transparent"
       )}
     >
       <div className="container flex h-16 items-center justify-between gap-4">
@@ -150,93 +164,13 @@ export function Navbar() {
 
 /* ----------------------------------------------------------------- hero --- */
 
-/** Soft colour behind the hero — the "mixed light" wash, in pure CSS. */
-function HeroWash() {
-  return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute -top-32 left-1/2 h-[30rem] w-[70rem] max-w-none -translate-x-1/2 rounded-full bg-primary/[0.13] blur-[110px] animate-float" />
-      <div className="absolute -top-16 right-[-6rem] h-[24rem] w-[24rem] rounded-full bg-secondary/[0.13] blur-[100px] animate-float [animation-delay:-5s]" />
-      <div className="absolute left-[-6rem] top-64 h-[22rem] w-[22rem] rounded-full bg-accent/[0.10] blur-[100px] animate-float [animation-delay:-9s]" />
-      <div className="absolute right-[12%] top-[26rem] h-[18rem] w-[18rem] rounded-full bg-amber-300/25 blur-[110px] animate-float [animation-delay:-3s]" />
-      <div className="absolute inset-x-0 top-0 h-[42rem] bg-grid [background-size:64px_64px] opacity-40 mask-fade-b" />
-    </div>
-  );
-}
-
+/**
+ * Hero is a looping ambient video background (`VideoHero`) with the copy/CTA
+ * overlaid on top — simpler than the scroll-scrubbed version it replaced
+ * (`ScrollVideoHero`, kept but unused): just plays, no scroll-jacking.
+ */
 export function Hero() {
-  return (
-    <section className="relative overflow-hidden pb-20 pt-32 sm:pt-36">
-      <HeroWash />
-
-      <div className="container relative">
-        <div className="mx-auto max-w-3xl text-center">
-          <motion.div {...fadeUp}>
-            <Badge
-              variant="outline"
-              className="border-border bg-card px-3.5 py-1.5 text-[13px] text-foreground shadow-soft"
-            >
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-70" />
-                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
-              </span>
-              Psychology-driven learning
-            </Badge>
-          </motion.div>
-
-          <motion.h1 {...fadeUpAt(1)} className="text-display mt-6">
-            The tutor that learns{" "}
-            <span className="text-gradient">how you learn</span> first
-          </motion.h1>
-
-          <motion.p {...fadeUpAt(2)} className="text-lead mx-auto mt-6 max-w-2xl">
-            A 20-question assessment maps your attention span, pace and memory style.
-            Then every lesson is written, drawn, narrated and quizzed for that profile.
-          </motion.p>
-
-          <motion.div
-            {...fadeUpAt(3)}
-            className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
-          >
-            <Link
-              href="/login"
-              className={cn(buttonVariants({ variant: "gradient", size: "lg" }), "group w-full sm:w-auto")}
-            >
-              Map my learning style
-              <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
-            </Link>
-            <a
-              href="#how-it-works"
-              className={cn(buttonVariants({ variant: "outline", size: "lg" }), "w-full sm:w-auto")}
-            >
-              See how it works
-            </a>
-          </motion.div>
-
-          <motion.ul
-            {...fadeUpAt(4)}
-            className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground"
-          >
-            {["Free to start", "5 languages", "No credit card"].map((item) => (
-              <li key={item} className="flex items-center gap-1.5">
-                <Check className="h-4 w-4 text-accent" />
-                {item}
-              </li>
-            ))}
-          </motion.ul>
-        </div>
-
-        {/* the product, playing */}
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.85, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className="mx-auto mt-16 max-w-5xl"
-        >
-          <LessonVideo />
-        </motion.div>
-      </div>
-    </section>
-  );
+  return <VideoHero />;
 }
 
 /* ----------------------------------------------------------- difference --- */
@@ -309,44 +243,65 @@ export function BoardSection() {
 
 /* --------------------------------------------------------- how it works --- */
 
-const STEPS = [
+const PIPELINE = [
   {
     icon: BrainCircuit,
-    title: "Map your mind",
-    text: "A 20-question psychology assessment builds your profile: style, attention, pace, memory strategy, confidence.",
+    title: "Assessment",
+    text: "20 psychology questions — no wrong answers.",
     tone: "bg-violet-100 text-violet-700",
   },
   {
-    icon: Sparkles,
-    title: "Ask for any topic",
-    text: "The lesson is written around that profile — bullet density, analogies, terminology and depth all shift.",
+    icon: Compass,
+    title: "Learning Profile",
+    text: "Style, pace, attention and memory become weighted traits.",
     tone: "bg-indigo-100 text-indigo-700",
   },
   {
-    icon: PenLine,
-    title: "Watch it written",
-    text: "An interactive board writes each term at the moment it is spoken, with diagrams drawn stroke by stroke.",
+    icon: Sparkles,
+    title: "AI Script",
+    text: "The lesson is authored around that exact profile.",
     tone: "bg-sky-100 text-sky-700",
   },
   {
-    icon: AudioLines,
-    title: "Hear it your way",
-    text: "Neural narration in your language, at a speed matched to your pace — free, with no quota to run out.",
+    icon: PenLine,
+    title: "Slides / PPT / PDF",
+    text: "Deck, handout and quiz render from the same script.",
     tone: "bg-teal-100 text-teal-700",
   },
   {
-    icon: MessageCircleQuestion,
-    title: "Ask mid-lesson",
-    text: "Click any term on the board and the tutor answers, grounded in the slide you are looking at right now.",
+    icon: AudioLines,
+    title: "Narration",
+    text: "Neural voice, your language, matched to your pace.",
     tone: "bg-amber-100 text-amber-700",
   },
   {
-    icon: Repeat2,
-    title: "Actually remember it",
-    text: "Quizzes size themselves to your revision habits, then spaced review brings each lesson back before you forget.",
+    icon: MessageCircleQuestion,
+    title: "Interactive Lesson",
+    text: "Board, tutor and quiz open the moment it's ready.",
     tone: "bg-rose-100 text-rose-700",
   },
 ];
+
+/** A flowing highlight sweeping through an otherwise static track — reads as
+ *  "things are moving through this pipeline" without looping attention-grabs. */
+function FlowTrack({ vertical = false }: { vertical?: boolean }) {
+  return (
+    <div
+      aria-hidden
+      className={cn(
+        "absolute overflow-hidden bg-border",
+        vertical ? "inset-y-0 left-[27px] w-0.5" : "inset-x-[8.5%] top-[27px] h-0.5"
+      )}
+    >
+      <div
+        className={cn(
+          "absolute bg-brand-gradient",
+          vertical ? "h-1/3 w-full animate-sheen-y" : "h-full w-1/3 animate-sheen"
+        )}
+      />
+    </div>
+  );
+}
 
 export function HowItWorks() {
   return (
@@ -360,28 +315,42 @@ export function HowItWorks() {
           </p>
         </motion.div>
 
-        <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {STEPS.map((step, index) => (
-            <motion.div key={step.title} {...fadeUpAt(index)}>
-              <Card interactive className="h-full">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={cn(
-                        "flex h-11 w-11 items-center justify-center rounded-xl",
-                        step.tone
-                      )}
-                    >
-                      <step.icon className="h-5 w-5" />
-                    </span>
-                    <span className="font-display text-2xl font-bold text-foreground/10">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                  </div>
-                  <h3 className="mt-5 text-base font-semibold">{step.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{step.text}</p>
-                </CardContent>
-              </Card>
+        {/* Desktop: a horizontal pipeline with a flowing connector track. */}
+        <div className="relative mt-16 hidden lg:grid lg:grid-cols-6 lg:gap-4">
+          <FlowTrack />
+          {PIPELINE.map((step, index) => (
+            <motion.div key={step.title} {...fadeUpAt(index)} className="relative flex flex-col items-center text-center">
+              <span
+                className={cn(
+                  "relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl border-4 border-background shadow-soft",
+                  step.tone
+                )}
+              >
+                <step.icon className="h-6 w-6" />
+              </span>
+              <p className="mt-4 text-sm font-semibold">{step.title}</p>
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{step.text}</p>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Mobile/tablet: the same pipeline, stacked with a vertical track. */}
+        <div className="relative mt-14 space-y-8 lg:hidden">
+          <FlowTrack vertical />
+          {PIPELINE.map((step, index) => (
+            <motion.div key={step.title} {...fadeUpAt(index)} className="relative flex items-start gap-4 pl-0">
+              <span
+                className={cn(
+                  "relative z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-4 border-background shadow-soft",
+                  step.tone
+                )}
+              >
+                <step.icon className="h-6 w-6" />
+              </span>
+              <div className="pt-2.5">
+                <p className="text-sm font-semibold">{step.title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{step.text}</p>
+              </div>
             </motion.div>
           ))}
         </div>
@@ -401,6 +370,33 @@ const KNOBS = [
   { icon: Compass, label: "Analogy style", from: "Everyday", to: "Formal", fill: "w-2/5" },
 ];
 
+const FEATURES = [
+  {
+    icon: MessageCircleQuestion,
+    title: "AI Tutor",
+    text: "Click any term on the board and ask — answers are grounded in the exact slide you're on.",
+    tone: "bg-indigo-100 text-indigo-700",
+  },
+  {
+    icon: Repeat2,
+    title: "Smart Review",
+    text: "Every quiz schedules the lesson to return exactly when you're about to forget it.",
+    tone: "bg-amber-100 text-amber-700",
+  },
+  {
+    icon: Compass,
+    title: "Learning Paths",
+    text: "Give it a goal and it plans a sectioned syllabus, generating each module as you unlock it.",
+    tone: "bg-violet-100 text-violet-700",
+  },
+  {
+    icon: Languages,
+    title: "Multilingual",
+    text: "Slides, narration, board and quiz — all translated, with a native neural voice.",
+    tone: "bg-teal-100 text-teal-700",
+  },
+];
+
 export function Capabilities() {
   return (
     <section id="capabilities" className="py-20 sm:py-24">
@@ -415,99 +411,89 @@ export function Capabilities() {
           </p>
         </motion.div>
 
-        <div className="mx-auto mt-14 grid max-w-5xl gap-4 md:grid-cols-3">
-          <motion.div {...fadeUp} className="md:col-span-2">
-            <Card className="h-full">
-              <CardContent className="p-6 sm:p-7">
+        <motion.div {...fadeUp} className="mx-auto mt-14 max-w-5xl">
+          <Card>
+            <CardContent className="grid gap-8 p-6 sm:p-8 md:grid-cols-2 md:items-center">
+              <div>
                 <h3 className="text-h3">Your profile moves these dials</h3>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Not cosmetic settings — they change what the model is asked to write.
                 </p>
-                <div className="mt-6 space-y-4">
-                  {KNOBS.map(({ icon: Icon, label, from, to, fill }) => (
-                    <div key={label} className="flex items-center gap-4">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-elevated text-accent">
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-baseline justify-between gap-3">
-                          <span className="text-sm font-medium">{label}</span>
-                          <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                            {from} → {to}
-                          </span>
-                        </div>
-                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                          <div className={cn("h-full rounded-full bg-brand-gradient", fill)} />
-                        </div>
+              </div>
+              <div className="space-y-4">
+                {KNOBS.map(({ icon: Icon, label, from, to, fill }) => (
+                  <div key={label} className="flex items-center gap-4">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-elevated text-accent">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-sm font-medium">{label}</span>
+                        <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                          {from} → {to}
+                        </span>
+                      </div>
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div className={cn("h-full rounded-full bg-brand-gradient", fill)} />
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-          <motion.div {...fadeUpAt(1)}>
-            <Card className="h-full">
-              <CardContent className="flex h-full flex-col p-6 sm:p-7">
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-100 text-teal-700">
-                  <Languages className="h-5 w-5" />
-                </span>
-                <h3 className="text-h3 mt-4">Taught in your language</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Slides, narration, board and quiz — all translated, with a native neural voice.
-                </p>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  {LANGUAGES.map((language) => (
-                    <Badge key={language} variant="outline" className="px-2.5 py-1 text-[13px]">
-                      {language}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {[
-            {
-              icon: Compass,
-              title: "Learning paths",
-              text: "Give it a goal and it plans a sectioned syllabus, then generates each module as you unlock it.",
-              tone: "bg-indigo-100 text-indigo-700",
-            },
-            {
-              icon: Repeat2,
-              title: "Spaced review",
-              text: "Every quiz schedules the lesson to return exactly when you're about to forget it.",
-              tone: "bg-amber-100 text-amber-700",
-            },
-            {
-              icon: ListChecks,
-              title: "Yours to keep",
-              text: "Download the deck as PPTX or PDF, the narration as audio, and the lesson as a subtitled MP4.",
-              tone: "bg-rose-100 text-rose-700",
-            },
-          ].map((feature, index) => (
-            <motion.div key={feature.title} {...fadeUpAt(index + 2)}>
-              <Card interactive className="h-full">
+        <div className="mx-auto mt-6 grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {FEATURES.map((feature, index) => (
+            <motion.div key={feature.title} {...fadeUpAt(index)}>
+              <Card interactive className="group h-full">
                 <CardContent className="p-6">
-                  <span
+                  <motion.span
+                    whileHover={{ scale: 1.12, rotate: -6 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 15 }}
                     className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-xl",
+                      "flex h-11 w-11 items-center justify-center rounded-xl",
                       feature.tone
                     )}
                   >
                     <feature.icon className="h-5 w-5" />
-                  </span>
+                  </motion.span>
                   <h3 className="mt-4 text-base font-semibold">{feature.title}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                     {feature.text}
                   </p>
+                  {feature.title === "Multilingual" && (
+                    <div className="mt-4 flex flex-wrap gap-1.5">
+                      {LANGUAGES.map((language) => (
+                        <Badge key={language} variant="outline" className="px-2 py-0.5 text-[11px]">
+                          {language}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>
           ))}
         </div>
+
+        <motion.div {...fadeUp} className="mx-auto mt-4 max-w-5xl">
+          <Card>
+            <CardContent className="flex flex-col items-center gap-4 p-6 text-center sm:flex-row sm:text-left">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
+                <ListChecks className="h-5 w-5" />
+              </span>
+              <div>
+                <h3 className="text-base font-semibold">Yours to keep</h3>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  Download the deck as PPTX or PDF, the narration as audio, and the lesson as a
+                  subtitled MP4.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     </section>
   );
@@ -521,16 +507,19 @@ export function FinalCta() {
       <div className="container">
         <motion.div
           {...fadeUp}
-          className="grain relative overflow-hidden rounded-[2rem] bg-brand-gradient px-6 py-16 text-center shadow-float sm:px-16"
+          className="grain relative overflow-hidden rounded-[2rem] bg-[#0B0A17] px-6 py-16 text-center shadow-float sm:px-16"
         >
+          {/* Echoes the hero's palette and glow, deliberately static and dimmer — a
+              second live particle sim here would be needless GPU cost for a moment
+              that's meant to read as calmer, not another spectacle. Soft radial
+              gradients rather than `blur()` filters: same glow, none of the
+              real-time blur compositing cost stacked on top of the grain
+              blend-mode + rounded clip this card already carries. */}
           <div
             aria-hidden
-            className="absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(255,255,255,0.28),transparent_55%)]"
+            className="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(129,140,248,0.28),transparent_50%),radial-gradient(circle_at_85%_75%,rgba(167,139,250,0.2),transparent_45%),radial-gradient(circle_at_12%_90%,rgba(251,191,36,0.16),transparent_40%)]"
           />
-          <div
-            aria-hidden
-            className="absolute inset-0 bg-[radial-gradient(circle_at_78%_88%,rgba(0,0,0,0.22),transparent_55%)]"
-          />
+          <div aria-hidden className="absolute inset-0 bg-grid [background-size:48px_48px] opacity-[0.06]" />
           <h2 className="text-h2 relative text-white">
             Learn your next topic the way your brain prefers
           </h2>

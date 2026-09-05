@@ -22,10 +22,14 @@ const envSchema = z
     GEMINI_MODEL: z.string().default("gemini-3.5-flash"),
 
     GROQ_API_KEY: z.string().optional().default(""),
-    GROQ_MODEL: z.string().default("llama-3.3-70b-versatile"),
+    // llama-3.3-70b-versatile / llama-3.1-8b-instant were retired from Groq's
+    // catalog (calls now 404 "model not found") — defaults point at Groq's
+    // current text models instead. Verify against `GET /openai/v1/models`
+    // before assuming these are still current if this ever breaks again.
+    GROQ_MODEL: z.string().default("openai/gpt-oss-120b"),
     // Smaller, faster model with a much larger free-tier tokens-per-minute
     // budget — used automatically when the primary model is rate-limited.
-    GROQ_FALLBACK_MODEL: z.string().default("llama-3.1-8b-instant"),
+    GROQ_FALLBACK_MODEL: z.string().default("openai/gpt-oss-20b"),
 
     PEXELS_API_KEY: z.string().optional().default(""),
 

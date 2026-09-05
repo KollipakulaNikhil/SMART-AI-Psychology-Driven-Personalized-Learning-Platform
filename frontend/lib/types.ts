@@ -94,7 +94,7 @@ export interface PresentationStatus {
   video: AssetStatus;
 }
 
-export type DiagramType = "flow" | "cycle" | "compare" | "list" | "none";
+export type DiagramType = "flow" | "cycle" | "compare" | "list" | "timeline" | "hierarchy" | "none";
 
 export type BoardEventKind = "term" | "note" | "node";
 
@@ -123,12 +123,38 @@ export interface SlideBoardView {
   timeline: BoardTimeline | null;
 }
 
+export interface StudyNotesDefinition {
+  term: string;
+  meaning: string;
+}
+
+export interface StudyNotesExample {
+  problem: string;
+  steps: string[];
+}
+
+export interface StudyNotesPractice {
+  question: string;
+  answer: string;
+}
+
+/** Notebook matter for a slide — what a student copies down. Null until the PPT stage writes it. */
+export interface StudyNotesView {
+  explanation: string;
+  definitions: StudyNotesDefinition[];
+  keyFacts: string[];
+  example: StudyNotesExample | null;
+  practice: StudyNotesPractice | null;
+  commonMistake: string | null;
+}
+
 export interface SlideView {
   index: number;
   title: string;
   points: string[];
   script: string;
   board: SlideBoardView | null;
+  studyNotes: StudyNotesView | null;
   imageCredit: string | null;
   imageUrl: string | null;
   renderedImageUrl: string | null;
@@ -139,8 +165,6 @@ export interface SlideView {
 export interface QuizQuestion {
   question: string;
   options: string[];
-  correctIndex: number;
-  explanation: string;
 }
 
 export interface LessonAssets {
@@ -156,6 +180,8 @@ export interface PresentationDetail {
   id: string;
   topic: string;
   focus: string | null;
+  /** Original filename of an uploaded PDF this lesson was grounded in, if any. */
+  sourceFileName: string | null;
   title: string;
   subject: string;
   summary: string;
@@ -238,17 +264,26 @@ export interface CourseSectionView {
   modules: CourseModuleView[];
 }
 
+export type CourseSourceType = "goal" | "document";
+
 export interface CourseView {
   id: string;
   goal: string;
   title: string;
   description: string;
   subject: string;
+  /** Language the roadmap (and its lessons) is planned in. */
+  language: LessonLanguage;
   modules: CourseModuleView[];
   sections: CourseSectionView[];
   totalModules: number;
   completedModules: number;
   progressPct: number;
+  /** "document" when this path was planned from an uploaded PDF. */
+  sourceType: CourseSourceType;
+  sourceFileName: string | null;
+  /** Useful topics the AI added beyond what the uploaded document covers. */
+  enrichment: string[];
   createdAt: string;
 }
 
@@ -267,6 +302,13 @@ export interface DueReviewsData {
   upcoming: ReviewEntryView[];
 }
 
+/** One question graded for the game mode; the key is revealed only after answering. */
+export interface PlayAnswerResult {
+  correct: boolean;
+  correctIndex: number;
+  explanation: string;
+}
+
 export interface QuizAttemptResult {
   score: number;
   total: number;
@@ -275,4 +317,5 @@ export interface QuizAttemptResult {
   nextReviewAt: string;
   intervalDays: number;
   streak: number;
+  answerKey: { correctIndex: number; explanation: string }[];
 }

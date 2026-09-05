@@ -25,6 +25,9 @@ backend/uploads/images/*
 !backend/generated/**/.gitkeep
 !backend/uploads/**/.gitkeep
 
+# Source media kept outside public/ (not shipped) — re-extract scroll-frames from these
+frontend/assets-src/
+
 # Logs
 logs/
 *.log

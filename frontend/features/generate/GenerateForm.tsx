@@ -1,9 +1,11 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Captions, Languages, PenLine, Sparkles } from "lucide-react";
+import { Captions, FileText, Languages, PenLine, Sparkles, Upload, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { useLessonLanguages, useRecentTopics } from "@/hooks/useLessons";
 import { cn } from "@/lib/utils";
 import type { LessonLanguageOption } from "@/lib/types";
+
+const MAX_PDF_MB = 20;
 
 const generateSchema = z.object({
   topic: z
@@ -59,19 +63,56 @@ const DETAIL_CHOICES: { value: GenerateValues["detailLevel"]; label: string; hin
 ];
 
 interface GenerateFormProps {
-  onGenerate: (values: GenerateValues) => void;
+  onGenerate: (values: GenerateValues, sourceFile?: File) => void;
   disabled: boolean;
   /** Prefilled when generating a Learning Path module. */
   defaultTopic?: string;
   defaultFocus?: string;
+  /** Prefilled narration language when generating a Learning Path module. */
+  defaultLanguage?: string;
 }
 
-export function GenerateForm({ onGenerate, disabled, defaultTopic, defaultFocus }: GenerateFormProps) {
+const LESSON_LANGUAGE_CODES = ["en", "hi", "te", "ta", "es"] as const;
+
+function toLessonLanguage(value: string | undefined): GenerateValues["language"] {
+  return (LESSON_LANGUAGE_CODES as readonly string[]).includes(value ?? "")
+    ? (value as GenerateValues["language"])
+    : "en";
+}
+
+export function GenerateForm({
+  onGenerate,
+  disabled,
+  defaultTopic,
+  defaultFocus,
+  defaultLanguage,
+}: GenerateFormProps) {
   const { data: recentTopics } = useRecentTopics();
   // Sourced from the server so the picker can never offer a language the
   // narrator has no voice for; the static list is just the pre-load fallback.
   const { data: languages } = useLessonLanguages();
   const languageChoices = languages ?? FALLBACK_LANGUAGES;
+
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSelectFile = (selected: File | undefined) => {
+    if (!selected) return;
+    if (selected.type !== "application/pdf") {
+      toast.error("Only PDF files are supported.");
+      return;
+    }
+    if (selected.size > MAX_PDF_MB * 1024 * 1024) {
+      toast.error(`That PDF is too large — the limit is ${MAX_PDF_MB}MB.`);
+      return;
+    }
+    setSourceFile(selected);
+  };
+
+  const clearFile = () => {
+    setSourceFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const {
     register,
@@ -87,7 +128,7 @@ export function GenerateForm({ onGenerate, disabled, defaultTopic, defaultFocus 
       durationMin: 0,
       detailLevel: "standard",
       subtitles: true,
-      language: "en",
+      language: toLessonLanguage(defaultLanguage),
       // English board by default: for the technical topics this gets used for,
       // an exam-matching English term is more useful written down than a
       // translated one, even when the explanation is in another language.
@@ -111,7 +152,11 @@ export function GenerateForm({ onGenerate, disabled, defaultTopic, defaultFocus 
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit(onGenerate)} className="space-y-5" noValidate>
+        <form
+          onSubmit={handleSubmit((values) => onGenerate(values, sourceFile ?? undefined))}
+          className="space-y-5"
+          noValidate
+        >
           <div className="space-y-1.5">
             <Label htmlFor="topic">Topic</Label>
             <Input
@@ -134,6 +179,55 @@ export function GenerateForm({ onGenerate, disabled, defaultTopic, defaultFocus 
               {...register("focus")}
             />
             {errors.focus && <p className="text-xs text-red-400">{errors.focus.message}</p>}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary" /> Ground it in a PDF{" "}
+              <span className="text-muted-foreground">(optional)</span>
+            </Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/pdf"
+              className="hidden"
+              onChange={(event) => handleSelectFile(event.target.files?.[0])}
+            />
+            {!sourceFile ? (
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-4 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-50"
+              >
+                <Upload className="h-4 w-4" /> Attach a PDF (textbook chapter, notes, article) — up to{" "}
+                {MAX_PDF_MB}MB
+              </button>
+            ) : (
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <FileText className="h-5 w-5 shrink-0 text-primary" />
+                  <span className="truncate text-sm font-medium">{sourceFile.name}</span>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {(sourceFile.size / (1024 * 1024)).toFixed(1)}MB
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={clearFile}
+                  className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+            {sourceFile && (
+              <p className="text-xs text-muted-foreground">
+                The lesson will be grounded in this document's own content, plus anything useful
+                SMART AI adds to fill the gaps.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">

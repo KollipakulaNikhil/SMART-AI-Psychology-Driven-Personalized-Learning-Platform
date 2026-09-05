@@ -4,8 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
+  NotebookPen,
   Pause,
   Play,
+  Presentation as PresentationIcon,
   Repeat,
   Volume2,
 } from "lucide-react";
@@ -17,6 +19,7 @@ import { staticUrl } from "@/lib/constants";
 import { useSpeech } from "@/hooks/useSpeech";
 import type { PresentationDetail, SlideView } from "@/lib/types";
 import { BoardSlideView } from "./BoardSlideView";
+import { StudyNotesPanel, hasStudyNotesContent } from "./StudyNotesPanel";
 
 /**
  * Board items are written at timestamps, so the player needs a clock rather than
@@ -67,6 +70,7 @@ export function InteractiveLesson({
   const [playing, setPlaying] = useState(false);
   const [autoAdvance, setAutoAdvance] = useState(true);
   const [audioDuration, setAudioDuration] = useState<number | null>(null);
+  const [view, setView] = useState<"board" | "notes">("board");
 
   const audioRef = useRef<HTMLAudioElement>(null);
   const frameRef = useRef<number | null>(null);
@@ -126,6 +130,11 @@ export function InteractiveLesson({
   // A new slide's audio element needs its duration re-read.
   useEffect(() => {
     setAudioDuration(null);
+  }, [currentSlide]);
+
+  // Never leave a learner stranded on the study notes of a slide they've navigated away from.
+  useEffect(() => {
+    setView("board");
   }, [currentSlide]);
 
   // Drive narration + the board clock whenever the slide changes while playing.
@@ -220,6 +229,8 @@ export function InteractiveLesson({
     elapsed === SHOW_ALL ? 1 : durationSec > 0 ? Math.min(1, elapsed / durationSec) : 0;
   const progressPct = ((currentSlide + slideProgress) / Math.max(1, slides.length)) * 100;
 
+  const showNotesTab = hasStudyNotesContent(slide?.studyNotes ?? null);
+
   if (!slide) {
     return (
       <Card>
@@ -234,12 +245,45 @@ export function InteractiveLesson({
     <div className="space-y-3">
       <Card className="overflow-hidden">
         <CardContent className="p-4 sm:p-5">
-          <BoardSlideView
-            slide={slide}
-            elapsed={elapsed}
-            durationSec={durationSec}
-            onTermClick={onAskTerm}
-          />
+          {showNotesTab && (
+            <div className="mb-3 inline-flex rounded-xl bg-muted/60 p-1">
+              <button
+                type="button"
+                onClick={() => setView("board")}
+                className={cn(
+                  "flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                  view === "board" ? "bg-card text-foreground shadow-soft" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <PresentationIcon className="h-3.5 w-3.5" />
+                Board
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("notes")}
+                className={cn(
+                  "flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                  view === "notes" ? "bg-card text-foreground shadow-soft" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <NotebookPen className="h-3.5 w-3.5" />
+                Study notes
+              </button>
+            </div>
+          )}
+
+          {view === "notes" && showNotesTab && slide.studyNotes ? (
+            <div className="scrollbar-thin sm:max-h-[560px] sm:overflow-y-auto">
+              <StudyNotesPanel notes={slide.studyNotes} />
+            </div>
+          ) : (
+            <BoardSlideView
+              slide={slide}
+              elapsed={elapsed}
+              durationSec={durationSec}
+              onTermClick={onAskTerm}
+            />
+          )}
 
           {/* Controls */}
           <div className="mt-4 space-y-3">
@@ -255,21 +299,29 @@ export function InteractiveLesson({
                 <Button
                   variant="ghost"
                   size="icon"
+                  className="h-11 w-11"
                   onClick={() => goTo(currentSlide - 1)}
                   disabled={currentSlide === 0}
                   aria-label="Previous slide"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </Button>
-                <Button variant="gradient" size="icon" onClick={togglePlay} aria-label={playing ? "Pause" : "Play"}>
+                <Button
+                  variant="gradient"
+                  size="icon"
+                  className="h-11 w-11"
+                  onClick={togglePlay}
+                  aria-label={playing ? "Pause" : "Play"}
+                >
                   {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
                 </Button>
-                <Button variant="ghost" size="icon" onClick={replay} aria-label="Replay slide">
+                <Button variant="ghost" size="icon" className="h-11 w-11" onClick={replay} aria-label="Replay slide">
                   <Repeat className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
+                  className="h-11 w-11"
                   onClick={() => goTo(currentSlide + 1)}
                   disabled={currentSlide === slides.length - 1}
                   aria-label="Next slide"
@@ -290,7 +342,7 @@ export function InteractiveLesson({
                   type="button"
                   onClick={() => setAutoAdvance((v) => !v)}
                   className={cn(
-                    "rounded-full border px-2.5 py-1 transition-colors",
+                    "flex min-h-11 items-center rounded-full border px-2.5 py-1 transition-colors",
                     autoAdvance ? "border-primary/50 text-primary" : "border-border"
                   )}
                 >
@@ -325,11 +377,15 @@ export function InteractiveLesson({
             type="button"
             onClick={() => goTo(i)}
             title={s.title}
-            className={cn(
-              "h-2 flex-1 rounded-full transition-colors",
-              i < currentSlide ? "bg-primary/60" : i === currentSlide ? "bg-primary" : "bg-muted"
-            )}
-          />
+            className="flex min-h-11 flex-1 items-center py-1"
+          >
+            <span
+              className={cn(
+                "h-2 w-full rounded-full transition-colors",
+                i < currentSlide ? "bg-primary/60" : i === currentSlide ? "bg-primary" : "bg-muted"
+              )}
+            />
+          </button>
         ))}
       </div>
     </div>

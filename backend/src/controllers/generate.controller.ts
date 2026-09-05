@@ -48,6 +48,8 @@ import {
 import { logHistory, touchRecentTopic } from "../services/history.service";
 import { touchStudyStreak } from "../services/review.service";
 import { Course } from "../models/Course";
+import { extractPdfText } from "../services/pdfExtract.service";
+import type { UserDocument } from "../models/User";
 
 export const generateContentSchema = z.object({
   topic: z.string().trim().min(3, "Topic must be at least 3 characters").max(200),
@@ -72,6 +74,20 @@ export const generateContentSchema = z.object({
   /** Present when this lesson is a module of a Learning Path. */
   courseId: z.string().refine(Types.ObjectId.isValid, "Invalid course id").optional(),
   moduleIndex: z.coerce.number().int().min(0).max(20).optional(),
+});
+
+/**
+ * Multipart body for generating a lesson grounded in an uploaded PDF: the
+ * file arrives as `req.file` (see `middleware/upload.ts`), everything else as
+ * form fields — multer parses booleans/numbers as strings, hence the coercion
+ * and the `"true"/"false"` handling `subtitles` needs that JSON body never did.
+ */
+export const generateContentFromPdfSchema = generateContentSchema.extend({
+  subtitles: z
+    .union([z.boolean(), z.enum(["true", "false"])])
+    .optional()
+    .default(true)
+    .transform((value) => value === true || value === "true"),
 });
 
 export const presentationIdSchema = z.object({
@@ -108,14 +124,12 @@ function normalizeBoard(
 
   const notes =
     slide.board?.notes && slide.board.notes.length > 0
-      ? slide.board.notes.slice(0, 4)
-      : detailLevel === "detailed"
-        ? slide.points.slice(0, 3)
-        : [];
+      ? slide.board.notes.slice(0, 6)
+      : slide.points.slice(0, detailLevel === "detailed" ? 4 : 2);
 
   const diagram =
     slide.board?.diagram && slide.board.diagram.type !== "none" && slide.board.diagram.nodes.length > 0
-      ? { type: slide.board.diagram.type, nodes: slide.board.diagram.nodes.slice(0, 6) }
+      ? { type: slide.board.diagram.type, nodes: slide.board.diagram.nodes.slice(0, 7) }
       : undefined;
 
   return { keyTerms: keyTerms.length > 0 ? keyTerms : [toKeyTerm(slide.title)], notes, diagram };
@@ -182,24 +196,54 @@ async function markFailed(
   );
 }
 
+interface CreateLessonContentInput {
+  topic: string;
+  focus?: string;
+  durationMin?: number;
+  detailLevel?: "quick" | "standard" | "detailed";
+  subtitles: boolean;
+  language: (typeof LESSON_LANGUAGES)[number];
+  boardLanguage?: (typeof LESSON_LANGUAGES)[number];
+  courseId?: string;
+  moduleIndex?: number;
+}
+
+/** Present only when this lesson is grounded in an uploaded PDF. */
+interface LessonSource {
+  text: string;
+  truncated: boolean;
+  fileName: string;
+}
+
 /**
- * Stage 1 — profile-adapted lesson content via Gemini, plus one
- * context-matched image per slide.
+ * Stage 1's actual work, shared by the plain-topic and PDF-grounded entry
+ * points below — everything from here on (profile lookup, translation, image
+ * fetch, Learning Path linking) is identical either way; only how the AI
+ * content prompt is grounded differs.
  */
-export const generateContent = asyncHandler(async (req, res) => {
-  const user = req.user!;
-  const {
-    topic,
-    focus,
-    durationMin,
-    detailLevel,
-    subtitles,
-    language,
-    boardLanguage,
-    courseId,
-    moduleIndex,
-  } = req.body as z.infer<typeof generateContentSchema>;
+async function createLessonContent(
+  user: UserDocument,
+  input: CreateLessonContentInput,
+  source?: LessonSource
+): Promise<PresentationDocument> {
+  const { topic, focus, durationMin, detailLevel, subtitles, language, boardLanguage, courseId, moduleIndex } =
+    input;
   const writtenLanguage = resolveBoardLanguage(language, boardLanguage);
+
+  // Learning Path integration: a module can only be generated once every
+  // earlier module in the same course has actually been completed. Checked
+  // up front — before the profile lookup and before a Presentation is
+  // created — so a locked module burns no AI/image-fetch calls.
+  if (courseId && moduleIndex !== undefined) {
+    const course = await Course.findOne({ _id: courseId, userId: user._id });
+    if (!course) throw ApiError.notFound("Learning path not found");
+    const isUnlocked = course.modules
+      .filter((module) => module.index < moduleIndex)
+      .every((module) => module.status === "completed");
+    if (!isUnlocked) {
+      throw ApiError.forbidden("Finish the previous lesson before starting this one");
+    }
+  }
 
   const profile = await LearningProfile.findOne({ userId: user._id }).lean();
   if (!profile) {
@@ -210,6 +254,7 @@ export const generateContent = asyncHandler(async (req, res) => {
     userId: user._id,
     topic,
     focus,
+    sourceFileName: source?.fileName,
     profileSnapshot: profile.traits,
     generationOptions: { durationMin, detailLevel, subtitles, language, boardLanguage: writtenLanguage },
     status: { content: "processing", ppt: "pending", audio: "pending", video: "pending" },
@@ -219,6 +264,8 @@ export const generateContent = asyncHandler(async (req, res) => {
     const { content: englishContent } = await generateLessonContent(topic, profile.traits, focus, {
       durationMin,
       detailLevel,
+      sourceText: source?.text,
+      sourceTruncated: source?.truncated,
     });
 
     // The lesson is authored in English (where the content prompt and the models
@@ -285,11 +332,40 @@ export const generateContent = asyncHandler(async (req, res) => {
       );
     }
 
-    res.status(201).json({ success: true, data: serializePresentation(presentation) });
+    return presentation;
   } catch (error) {
     await markFailed(presentation, "content", error);
     throw error;
   }
+}
+
+/**
+ * Stage 1 — profile-adapted lesson content via Gemini, plus one
+ * context-matched image per slide.
+ */
+export const generateContent = asyncHandler(async (req, res) => {
+  const presentation = await createLessonContent(req.user!, req.body as z.infer<typeof generateContentSchema>);
+  res.status(201).json({ success: true, data: serializePresentation(presentation) });
+});
+
+/**
+ * Same as `generateContent`, but grounded in an uploaded PDF: the document's
+ * text is extracted and handed to the content prompt as authoritative source
+ * material (see `sourceSection` in promptEngine's `buildContentPrompt`), so
+ * the lesson's facts and examples come from what the learner actually
+ * uploaded rather than the model's general knowledge of the topic.
+ */
+export const generateContentFromPdf = asyncHandler(async (req, res) => {
+  const file = req.file;
+  if (!file) throw ApiError.badRequest("Attach a PDF file");
+
+  const { text, truncated } = await extractPdfText(file.buffer);
+  const presentation = await createLessonContent(
+    req.user!,
+    req.body as z.infer<typeof generateContentFromPdfSchema>,
+    { text, truncated, fileName: file.originalname }
+  );
+  res.status(201).json({ success: true, data: serializePresentation(presentation) });
 });
 
 /**

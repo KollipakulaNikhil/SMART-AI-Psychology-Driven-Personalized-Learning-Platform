@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Check, Lock, Play, Sparkles } from "lucide-react";
+import { Check, FileText, Lock, Play, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,12 +12,13 @@ import { useCourse } from "@/hooks/useLearning";
 import { cn } from "@/lib/utils";
 import type { CourseModuleView } from "@/lib/types";
 
-function moduleGenerateHref(courseId: string, module: CourseModuleView): string {
+function moduleGenerateHref(courseId: string, module: CourseModuleView, language: string): string {
   const params = new URLSearchParams({
     topic: module.topic,
     focus: module.focus,
     courseId,
     moduleIndex: String(module.index),
+    language,
   });
   return `/dashboard/generate?${params.toString()}`;
 }
@@ -49,7 +50,13 @@ export function PathDetail({ courseId }: { courseId: string }) {
       <div>
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <Badge variant="secondary">{course.subject}</Badge>
-          <Badge variant="outline">Goal: {course.goal}</Badge>
+          {course.sourceType === "document" ? (
+            <Badge variant="outline" className="gap-1">
+              <FileText className="h-3 w-3" /> From {course.sourceFileName ?? "an uploaded PDF"}
+            </Badge>
+          ) : (
+            <Badge variant="outline">Goal: {course.goal}</Badge>
+          )}
         </div>
         <h1 className="text-2xl font-bold sm:text-3xl">{course.title}</h1>
         <p className="mt-2 max-w-3xl text-muted-foreground">{course.description}</p>
@@ -63,6 +70,24 @@ export function PathDetail({ courseId }: { courseId: string }) {
           <Progress value={course.progressPct} />
         </div>
       </div>
+
+      {course.enrichment.length > 0 && (
+        <Card className="border-accent/30 bg-accent/5">
+          <CardContent className="p-4">
+            <div className="mb-2 flex items-center gap-2 text-sm font-medium text-accent">
+              <Sparkles className="h-4 w-4" /> Added by SMART AI beyond your document
+            </div>
+            <ul className="space-y-1.5">
+              {course.enrichment.map((line, index) => (
+                <li key={index} className="flex gap-2 text-sm text-muted-foreground">
+                  <span className="text-accent">•</span>
+                  <span>{line}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Roadmap grouped into sections (chapters), each with its subtopic lessons */}
       <div className="space-y-8">
@@ -156,7 +181,7 @@ export function PathDetail({ courseId }: { courseId: string }) {
                             )}
                             {module.status === "pending" && !isLocked && (
                               <Link
-                                href={moduleGenerateHref(course.id, module)}
+                                href={moduleGenerateHref(course.id, module, course.language)}
                                 className={buttonVariants({ variant: isActive ? "gradient" : "outline", size: "sm" })}
                               >
                                 <Sparkles className="h-3.5 w-3.5" /> Generate lesson

@@ -428,9 +428,34 @@ export async function renderAnswerSlide(
   const head = pageHeader(kicker, heading, COLORS.warn);
   let body = "";
   let cursor = head.bodyY + 10;
+
+  // Unlike the practice/quiz pages, this page stacks a *variable* number of
+  // entries with no per-item card to clip them — a long-winded model answer
+  // hitting the old hardcoded caps (2 lead lines + 3 body lines) times up to
+  // 4 entries per page can run past the footer at y=H-44. Budget the
+  // vertical space per entry from what's actually available above the
+  // footer and derive how many lines each block gets to keep from
+  // overflowing — the same idea renderNotesSlide uses to size its
+  // explanation block against FACTS_LABEL_Y.
+  const FOOTER_MARGIN_Y = H - 44 - 30; // clearance above the footer bar/text
+  const LEAD_LINE_H = 36; // fontSize 25 * 1.42 rounded, matches paragraph()'s lineHeight
+  const DETAIL_LINE_H = 30; // fontSize 21 * 1.42 rounded
+  const LEAD_GAP = 34; // gap paragraph() below leaves between the lead and the detail block
+  const ENTRY_GAP = 40; // gap left after an entry's detail before the next entry starts
+  const available = FOOTER_MARGIN_Y - cursor;
+  const perEntry = available / Math.max(1, entries.length);
+  const leadMaxLines = Math.max(
+    1,
+    Math.min(2, Math.floor((perEntry - LEAD_GAP - ENTRY_GAP - DETAIL_LINE_H) / LEAD_LINE_H))
+  );
+  const detailMaxLines = Math.max(
+    1,
+    Math.min(3, Math.floor((perEntry - leadMaxLines * LEAD_LINE_H - LEAD_GAP - ENTRY_GAP) / DETAIL_LINE_H))
+  );
+
   for (const entry of entries) {
-    const lead = paragraph(entry.lead, 120, cursor, 1680, 25, 2, COLORS.text, "700");
-    const detail = paragraph(entry.body, 120, lead.y + 34, 1680, 21, 3, COLORS.muted);
+    const lead = paragraph(entry.lead, 120, cursor, 1680, 25, leadMaxLines, COLORS.text, "700");
+    const detail = paragraph(entry.body, 120, lead.y + 34, 1680, 21, detailMaxLines, COLORS.muted);
     body += lead.svg + detail.svg;
     cursor = detail.y + 40;
   }

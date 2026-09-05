@@ -4,7 +4,7 @@ import type { LearnerTraits } from "./LearningProfile";
 
 export type AssetStatus = "pending" | "processing" | "ready" | "failed";
 
-export type DiagramType = "flow" | "cycle" | "compare" | "list" | "none";
+export type DiagramType = "flow" | "cycle" | "compare" | "list" | "timeline" | "hierarchy" | "none";
 
 export interface SlideBoard {
   keyTerms: string[];
@@ -133,6 +133,8 @@ export interface PresentationDocument extends Document<Types.ObjectId> {
   userId: Types.ObjectId;
   topic: string;
   focus?: string;
+  /** Original filename of an uploaded PDF this lesson was grounded in, if any. */
+  sourceFileName?: string;
   title: string;
   subject: string;
   summary: string;
@@ -175,7 +177,11 @@ const generationOptionsSchema = new Schema<GenerationOptions>(
 
 const diagramSchema = new Schema<NonNullable<SlideBoard["diagram"]>>(
   {
-    type: { type: String, enum: ["flow", "cycle", "compare", "list", "none"], required: true },
+    type: {
+      type: String,
+      enum: ["flow", "cycle", "compare", "list", "timeline", "hierarchy", "none"],
+      required: true,
+    },
     nodes: { type: [String], default: [] },
   },
   { _id: false }
@@ -293,6 +299,7 @@ const presentationSchema = new Schema<PresentationDocument>(
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     topic: { type: String, required: true, trim: true },
     focus: { type: String, trim: true },
+    sourceFileName: { type: String },
     title: { type: String, default: "" },
     subject: { type: String, default: "General" },
     summary: { type: String, default: "" },

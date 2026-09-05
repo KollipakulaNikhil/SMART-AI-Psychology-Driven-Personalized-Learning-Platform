@@ -15,12 +15,18 @@ export function Progress({ value, className }: ProgressProps) {
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(clamped)}
-      className={cn("h-2 w-full overflow-hidden rounded-full bg-muted", className)}
+      className={cn("relative h-2 w-full overflow-hidden rounded-full bg-muted", className)}
     >
       <div
-        className="h-full rounded-full bg-brand-gradient transition-all duration-500 ease-out"
+        className="relative h-full overflow-hidden rounded-full bg-gradient-to-r from-amber/70 to-amber transition-[width] duration-500 ease-out"
         style={{ width: `${clamped}%` }}
-      />
+      >
+        {/* Achievement signal gets a live sheen so progress reads as "moving", not painted. */}
+        <span
+          aria-hidden
+          className="absolute inset-0 -translate-x-full animate-sheen bg-gradient-to-r from-transparent via-white/50 to-transparent"
+        />
+      </div>
     </div>
   );
 }

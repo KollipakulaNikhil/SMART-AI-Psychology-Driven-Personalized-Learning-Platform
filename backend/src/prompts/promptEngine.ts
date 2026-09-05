@@ -22,11 +22,11 @@ export const generatedContentSchema = z.object({
         board: z
           .object({
             keyTerms: z.array(z.string().min(1).max(48)).min(1).max(6).optional(),
-            notes: z.array(z.string().min(2).max(110)).max(4).optional(),
+            notes: z.array(z.string().min(2).max(160)).max(6).optional(),
             diagram: z
               .object({
-                type: z.enum(["flow", "cycle", "compare", "list", "none"]),
-                nodes: z.array(z.string().min(1).max(40)).max(6).default([]),
+                type: z.enum(["flow", "cycle", "compare", "list", "timeline", "hierarchy", "none"]),
+                nodes: z.array(z.string().min(1).max(40)).max(7).default([]),
               })
               .optional(),
           })
@@ -74,6 +74,15 @@ export function buildContentPrompt(
 ): { prompt: string; params: GenerationParams } {
   const params = deriveGenerationParams(traits, options);
 
+  const sourceSection = options.sourceText
+    ? `\n\n## SOURCE DOCUMENT${options.sourceTruncated ? " (excerpt — it continues beyond what's shown)" : ""}
+The learner uploaded this material — ground the lesson in it, don't invent facts it doesn't support:
+"""
+${options.sourceText}
+"""
+Most of the lesson must come directly from what this document actually says. You MAY also add a small amount of genuinely useful context the document assumes or gestures at without explaining (a prerequisite, a definition it uses but doesn't define, how the pieces connect) — exactly as a good teacher fills gaps a handout leaves open — but never contradict the source, and never invent statistics, dates or studies it doesn't contain.`
+    : "";
+
   const prompt = `You are SMART AI, an expert instructional designer who adapts lessons to the psychology of each individual learner.
 
 ## THE LEARNER
@@ -87,7 +96,7 @@ This lesson is for ${STYLE_DESCRIPTIONS[traits.learningStyle]}
 - Memory strategy that works for them: ${traits.memoryType}
 
 ## THE TASK
-Write a complete lesson that will be delivered as a VIDEO: a human-sounding narrator stands at a digital board, speaks the "script" out loud, and writes the "board" content as they go. This is NOT a slideshow of bullet points — it is a person explaining on a board. Topic: "${topic}"${focus ? `\nThe learner specifically wants to focus on: "${focus}"` : ""}
+Write a complete lesson that will be delivered as a VIDEO: a human-sounding narrator stands at a digital board, speaks the "script" out loud, and writes the "board" content as they go. This is NOT a slideshow of bullet points — it is a person explaining on a board. Topic: "${topic}"${focus ? `\nThe learner specifically wants to focus on: "${focus}"` : ""}${sourceSection}
 
 ## HOW THE NARRATOR SHOULD SPEAK (this matters most)
 ${params.deliveryStyle}
@@ -97,10 +106,10 @@ ${params.narrationStyle}
 1. Produce EXACTLY ${params.slideCount} slides. Slide 1 opens with a hook that pulls the learner in; the final slide wraps up with the key takeaways.
 2. Each slide's "script" is the spoken narration for that slide: roughly ${params.scriptWordsPerSlide} words (±20%), written as natural speech per the rules above.${params.durationLine ? `\n   ${params.durationLine}` : ""}
 3. ${params.explanationRule}
-4. Each slide's "board.keyTerms" are the 2-5 short words or phrases the narrator writes on the board on that slide (each under 6 words). They must be the exact terms the script emphasises.
+4. Each slide's "board.keyTerms" are the 2-6 short words or phrases the narrator writes on the board on that slide (each under 6 words). They must be the exact terms the script emphasises.
 5. ${params.boardNotesRule}
 6. ${params.boardGuidance}
-7. When a slide's concept is a process, relationship, cycle or comparison, include "board.diagram" with a fitting "type" ("flow" for A→B→C steps, "cycle" for a repeating loop, "compare" for two contrasting sides, "list" for grouped items) and 2-6 short "nodes". Use "none" only for a pure intro/outro slide.
+7. When a slide's concept is a process, relationship, cycle or comparison, include "board.diagram" with a fitting "type" — "flow" for A→B→C steps, "cycle" for a repeating loop, "compare" for two contrasting sides, "list" for grouped items, "timeline" for events/stages ordered in time (each node can start with a date/stage label), "hierarchy" for a top-down structure where each node is a level (broadest/most important first, most specific last) — and 2-7 short "nodes". Pick whichever type actually matches how the concept is structured; don't default to "flow" for everything. Use "none" only for a pure intro/outro slide.
 8. Each slide has 3 to ${params.maxPointsPerSlide} "points" (each AT MOST ${params.maxWordsPerPoint} words). These go into a downloadable deck the learner revises from WITHOUT the narration, so every point must be a complete, self-contained statement that teaches something — a definition, a rule, a cause, a consequence, a concrete figure. Never a bare label or a two-word fragment, and never a point that only makes sense if you heard the script.
 9. ${params.terminology}
 10. ${params.analogyRule}

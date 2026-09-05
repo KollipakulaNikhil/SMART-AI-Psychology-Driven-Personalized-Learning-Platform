@@ -2,8 +2,26 @@
 
 import { useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider, useTheme } from "next-themes";
 import { Toaster } from "sonner";
 import { AuthProvider } from "./AuthContext";
+
+function ThemedToaster() {
+  const { resolvedTheme } = useTheme();
+  return (
+    <Toaster
+      theme={resolvedTheme === "light" ? "light" : "dark"}
+      position="bottom-right"
+      toastOptions={{
+        style: {
+          background: "hsl(var(--card))",
+          border: "1px solid hsl(var(--border))",
+          color: "hsl(var(--card-foreground))",
+        },
+      }}
+    />
+  );
+}
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -20,21 +38,13 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        {children}
-        <Toaster
-          theme="dark"
-          position="bottom-right"
-          toastOptions={{
-            style: {
-              background: "hsl(217 33% 17%)",
-              border: "1px solid hsl(217 28% 24%)",
-              color: "hsl(210 40% 98%)",
-            },
-          }}
-        />
-      </AuthProvider>
-    </QueryClientProvider>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          {children}
+          <ThemedToaster />
+        </AuthProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }

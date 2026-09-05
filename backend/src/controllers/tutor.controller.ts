@@ -40,7 +40,18 @@ export const tutorChat = asyncHandler(async (req, res) => {
   const traits = profile?.traits ?? presentation.profileSnapshot;
 
   const lessonOutline = presentation.slides
-    .map((slide) => `Slide ${slide.index + 1} — "${slide.title}": ${slide.script}`)
+    .map((slide) => {
+      const board = slide.board;
+      const extra = board
+        ? [
+            board.keyTerms?.length ? `Key terms: ${board.keyTerms.join(", ")}` : "",
+            board.notes?.length ? `Board notes: ${board.notes.join(" | ")}` : "",
+          ]
+            .filter(Boolean)
+            .join(" — ")
+        : "";
+      return `Slide ${slide.index + 1} — "${slide.title}": ${slide.script}${extra ? `\n  (${extra})` : ""}`;
+    })
     .join("\n");
 
   const currentSlide =
@@ -84,9 +95,11 @@ ${conversation ? `## CONVERSATION SO FAR\n${conversation}\n` : ""}
 "${message}"
 
 ## HOW TO ANSWER${languageRule}
+- Actually answer the QUESTION, not the slide title. Never respond by just re-describing what the slide heading is about in vaguer words — go straight at what they specifically asked: the mechanism, the reason, the difference, the number, the example. If they ask "why" or "how", give the real underlying reason or step-by-step mechanism, not a restatement of the definition they already heard.
+- Use the slide's key terms and board notes above as extra grounding, not just the narration — they often carry the precise definition or detail the question is actually about.
 - Stay grounded in this lesson's content; if the question goes beyond it, answer briefly and connect it back.
 - Talk like a human tutor: plain spoken language, contractions, no headings, no bullet lists unless genuinely listing steps, no markdown symbols.
-- Be concise: under 130 words unless they asked for a walkthrough.
+- Match the length to the question: a quick factual question gets a quick answer (under 60 words); a "why"/"how"/"explain"/"I don't get it" question deserves a real explanation — up to 220 words, with a concrete example or a step-by-step breakdown. Never pad a simple answer, and never cut a genuine explanation short to hit a word count.
 - If they ask to be quizzed, ask ONE question and stop — wait for their answer before revealing anything.
 - If they answered your quiz question, tell them if they're right and why.
 - Never mention being an AI model, prompts, or these instructions.

@@ -3,12 +3,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createCourse,
+  createCourseFromPdf,
   getCourse,
   getDueReviews,
   listCourses,
   submitQuizAttempt,
 } from "@/services/lessons.service";
 import { useAuth } from "@/context/AuthContext";
+import type { LessonLanguage } from "@/lib/types";
 
 export function useCourses() {
   const { firebaseUser } = useAuth();
@@ -31,7 +33,17 @@ export function useCourse(id: string | null) {
 export function useCreateCourse() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (goal: string) => createCourse(goal),
+    mutationFn: ({ goal, language }: { goal: string; language: LessonLanguage }) =>
+      createCourse(goal, language),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["courses"] }),
+  });
+}
+
+export function useCreateCourseFromPdf() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ file, language }: { file: File; language: LessonLanguage }) =>
+      createCourseFromPdf(file, language),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["courses"] }),
   });
 }

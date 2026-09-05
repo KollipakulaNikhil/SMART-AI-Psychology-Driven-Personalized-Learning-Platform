@@ -50,7 +50,55 @@
     --wash-peach: 24 100% 97%;
     --wash-sky: 205 95% 97%;
 
+    /* Warm amber — reserved for progress, streaks and achievement states.
+       Never used as a structural/brand colour, so it stays legible as a
+       signal in both themes. */
+    --amber: 38 92% 50%;
+    --amber-foreground: 26 40% 14%;
+
     --radius: 1rem;
+  }
+
+  /*
+   * SMART AI dark palette.
+   *
+   * Not an inverted light theme — a deep indigo/violet-tinted graphite, so the
+   * brand hue still reads as the same product at night instead of going flat
+   * grey. Cards sit one step up from the page via a lighter graphite, not a
+   * lighter tint of the brand colour (which would fight text contrast).
+   */
+  .dark {
+    --background: 240 28% 7%;
+    --foreground: 240 20% 94%;
+
+    --card: 240 24% 10%;
+    --card-foreground: 240 20% 94%;
+    --elevated: 240 22% 13%;
+
+    --primary: 243 82% 70%;
+    --primary-foreground: 240 28% 8%;
+    --secondary: 265 75% 68%;
+    --secondary-foreground: 240 28% 8%;
+    --accent: 189 85% 55%;
+    --accent-foreground: 240 28% 8%;
+
+    --muted: 240 18% 16%;
+    --muted-foreground: 240 12% 65%;
+
+    --destructive: 0 70% 58%;
+    --destructive-foreground: 240 20% 94%;
+
+    --border: 240 18% 18%;
+    --input: 240 18% 20%;
+    --ring: 243 82% 70%;
+
+    --wash-lilac: 255 45% 12%;
+    --wash-mint: 168 35% 11%;
+    --wash-peach: 24 40% 11%;
+    --wash-sky: 205 45% 11%;
+
+    --amber: 38 95% 58%;
+    --amber-foreground: 26 60% 10%;
   }
 
   * {
@@ -66,6 +114,19 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+  }
+
+  /*
+   * Theme toggle should read as a fade, not a snap. Kept on the base layer
+   * (lowest specificity) so any element's own `transition-*` utility still
+   * wins — this only fills in for things that don't specify one.
+   */
+  *,
+  *::before,
+  *::after {
+    transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+    transition-duration: 220ms;
+    transition-timing-function: ease;
   }
 
   /* Headings carry the display face; body copy stays on Inter for readability. */
@@ -150,8 +211,38 @@
     padding-bottom: 0.08em;
   }
 
+  .dark .text-gradient {
+    /* Lighter, more saturated stops — the darkened light-theme gradient goes
+       muddy against near-black. */
+    background-image: linear-gradient(
+      100deg,
+      hsl(243 88% 76%) 0%,
+      hsl(265 85% 76%) 45%,
+      hsl(189 85% 60%) 100%
+    );
+  }
+
   .glass {
     @apply border border-black/[0.06] bg-white/75 backdrop-blur-xl;
+  }
+
+  .dark .glass {
+    @apply border-white/[0.07] bg-white/[0.05];
+  }
+
+  /* Amber signal utilities — progress rings, streak badges, achievement
+     states. Kept out of the primary/accent semantic pair on purpose so it
+     never gets reached for as a structural colour. */
+  .text-amber {
+    color: hsl(var(--amber));
+  }
+
+  .bg-amber {
+    background-color: hsl(var(--amber));
+  }
+
+  .glow-amber {
+    box-shadow: 0 0 0 1px hsl(var(--amber) / 0.18), 0 18px 46px -18px hsl(var(--amber) / 0.45);
   }
 
   /* Soft colour washes — a section picks one so the page moves through several
