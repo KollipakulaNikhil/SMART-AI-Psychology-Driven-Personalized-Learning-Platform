@@ -62,7 +62,13 @@ export function VideoHero() {
   }, [reducedMotion]);
 
   return (
-    <section id="hero-video" className="relative flex min-h-[85vh] items-center justify-center overflow-hidden">
+    // Fills the first screen exactly: the navbar floats over it, so 100svh
+    // (small viewport height — stable under mobile browser chrome) means no
+    // strip of the next section peeks in below the fold.
+    <section
+      id="hero-video"
+      className="relative flex min-h-screen min-h-[100svh] items-center justify-center overflow-hidden"
+    >
       {reducedMotion ? (
         <img src={POSTER_SRC} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />
       ) : (
