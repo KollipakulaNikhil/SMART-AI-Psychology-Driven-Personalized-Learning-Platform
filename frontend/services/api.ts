@@ -45,6 +45,11 @@ export async function apiPost<T>(url: string, body?: unknown): Promise<T> {
   return data.data;
 }
 
+export async function apiDelete<T>(url: string): Promise<T> {
+  const { data } = await api.delete<ApiEnvelope<T>>(url);
+  return data.data;
+}
+
 /**
  * Posts a FormData body (file upload). The instance default `Content-Type:
  * application/json` header must be cleared for this call — otherwise axios

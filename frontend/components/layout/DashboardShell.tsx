@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   BrainCog,
+  FlaskConical,
   History,
   LayoutDashboard,
   LogOut,
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
   { href: "/dashboard/generate", label: "New lesson", icon: Sparkles, exact: false },
   { href: "/dashboard/paths", label: "Learning paths", icon: Map, exact: false },
+  { href: "/dashboard/research", label: "Research Lab", icon: FlaskConical, exact: false },
   { href: "/dashboard/history", label: "History", icon: History, exact: false },
   { href: "/dashboard/profile", label: "Learning profile", icon: BrainCog, exact: false },
 ];

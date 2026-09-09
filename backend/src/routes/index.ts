@@ -9,6 +9,7 @@ import analyticsRoutes from "./analytics.routes";
 import courseRoutes from "./course.routes";
 import reviewRoutes from "./review.routes";
 import tutorRoutes from "./tutor.routes";
+import researchRoutes from "./research.routes";
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use("/analytics", analyticsRoutes);
 router.use("/courses", courseRoutes);
 router.use("/review", reviewRoutes);
 router.use("/tutor", tutorRoutes);
+router.use("/research", researchRoutes);
 
 export default router;

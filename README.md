@@ -19,18 +19,19 @@ Landing → Login (Firebase) → Dashboard → Psychology questionnaire → Lear
 ├── backend/                 Express + TypeScript REST API
 │   ├── src/
 │   │   ├── config/          env validation, MongoDB, Firebase Admin
-│   │   ├── controllers/     auth, profile, questionnaire, generate, history, download, analytics
+│   │   ├── controllers/     auth, profile, questionnaire, generate, history, download, analytics, research
 │   │   ├── middleware/      Firebase auth guard, zod validation, rate limiting, error handler
 │   │   ├── models/          User, LearningProfile, Presentation, GeneratedVideo, History, RecentTopic
 │   │   ├── prompts/         20 psychology questions · trait scoring · adaptive prompt engine
 │   │   ├── routes/          /api/* route definitions
-│   │   ├── services/        Gemini + Groq (auto-fallback), Pexels, ElevenLabs, slide + board renderer, PPTX, PDF, FFmpeg video, talking-head
+│   │   ├── services/        Gemini + Groq (auto-fallback), Pexels, ElevenLabs, slide + board renderer, PPTX, PDF, FFmpeg video, talking-head,
+│   │   │                    Research Lab (arXiv/Semantic Scholar/OpenAlex/Google Patents search, first-page snapshots, ideation)
 │   ├── avatar/              optional Wav2Lip/SadTalker setup (README + setup checker)
 │   │   └── utils/           logger, ApiError, retry with backoff, path/url helpers
 │   ├── uploads/images/      fetched slide imagery (per lesson)
 │   └── generated/           ppt/ · pdf/ · audio/ · video/ · slides/ artifacts
 └── frontend/                Next.js 15 + TypeScript + Tailwind
-    ├── app/                 landing, login, dashboard, questionnaire, generate, lesson/[id], history, profile
+    ├── app/                 landing, login, dashboard, questionnaire, generate, lesson/[id], paths, research, history, profile
     ├── components/          shadcn-style UI kit + dashboard shell
     ├── features/            auth, questionnaire, generate pipeline, lesson, history, analytics, profile, landing
     ├── hooks/               React Query hooks + generation pipeline state machine
@@ -243,6 +244,46 @@ SMART AI doesn't stop at generating a lesson — it closes the loop on whether y
 | DELETE | `/api/courses/:id` | remove a path |
 | GET | `/api/review/due` | lessons due for spaced-repetition review |
 | POST | `/api/review/quiz-attempt` | grade a quiz, update the SM-2 schedule, streak & module completion |
+
+## Research Lab (prior art → ideation)
+
+A learner can **share a research idea** and SMART AI turns it into a grounded research brief
+(`/dashboard/research`):
+
+1. **Query planning** — the AI rewrites the idea into precise scholarly queries and
+   patent-style queries (`researchIdeation.service.ts`).
+2. **Prior-art search** (`scholar.service.ts`, `patents.service.ts`) — papers from **arXiv,
+   Semantic Scholar and OpenAlex**, patents from **Google Patents** (plus the USPTO PatentsView
+   API when a free key is set). All sources are free and keyless; each one is allowed to fail
+   independently, and results are merged, de-duplicated (DOI / arXiv id / title) and ranked by
+   cross-source agreement, citations and recency.
+3. **First-page snapshots** (`researchSnapshot.service.ts`) — every open-access PDF and patent
+   front page is rendered to a PNG (pdfjs + `@napi-rs/canvas`, already bundled with `pdf-parse`;
+   no headless browser), so the learner **sees the actual document** next to the explanation and
+   clicks through to the source. Paywalled or missing PDFs simply show a link instead.
+4. **Ideation from the sources** — the AI reads the gathered abstracts and, in the learner's
+   psychological style (knowledge level, tone, example preference, motivation), writes: an
+   overview of where the idea sits, a themed **research landscape**, a per-source
+   *why it matters / key takeaway / how it relates to your idea*, the **gaps** the prior work
+   leaves open, 3–5 **research directions** that each name the exact papers/patents they build on
+   (with hypothesis, novelty, feasibility, methodology and first steps), and next steps.
+5. **Explain this to me** — any paper or patent can be expanded into a plain-language walkthrough
+   (problem, approach, findings/claims, limitations, how to use it in your own research, glossary),
+   cached on the project.
+
+The pipeline runs in the background; the page polls and shows each stage as it completes.
+Snapshots are stored under `backend/generated/research/<projectId>/` and served from `/static`.
+
+| Method | Route | Purpose |
+|---|---|---|
+| POST | `/api/research` | share an idea → 202, brief prepared in the background *(rate-limited)* |
+| GET | `/api/research` / `/api/research/:id` | list / full brief (poll `status` until `ready` or `failed`) |
+| POST | `/api/research/:id/explain` | deep-dive explanation of one paper/patent (`{ kind, index }`) |
+| DELETE | `/api/research/:id` | remove a brief and its snapshots |
+
+Optional env: `SEMANTIC_SCHOLAR_API_KEY` (lifts the shared anonymous rate limit),
+`PATENTSVIEW_API_KEY` (adds the USPTO source), `RESEARCH_CONTACT_EMAIL` (identifies the app to
+the public APIs for their faster "polite" pools).
 
 ## Production notes
 

@@ -33,6 +33,17 @@ const envSchema = z
 
     PEXELS_API_KEY: z.string().optional().default(""),
 
+    // ── Research Lab (prior-art search) — all optional, every source is free ─
+    // Semantic Scholar works without a key but shares a small anonymous
+    // rate-limit pool; a free key lifts it. https://www.semanticscholar.org/product/api
+    SEMANTIC_SCHOLAR_API_KEY: z.string().optional().default(""),
+    // USPTO PatentSearch API (free key) — an extra patent source alongside
+    // Google Patents. https://patentsview.org/apis/keyrequest
+    PATENTSVIEW_API_KEY: z.string().optional().default(""),
+    // Contact address sent in User-Agent / OpenAlex "mailto" — public APIs
+    // route identified clients to their faster "polite" pools.
+    RESEARCH_CONTACT_EMAIL: z.string().optional().default(""),
+
     ELEVENLABS_API_KEY: z.string().optional().default(""),
     ELEVENLABS_MODEL_ID: z.string().default("eleven_multilingual_v2"),
     ELEVENLABS_VOICE_FRIENDLY: z.string().default("EXAVITQu4vr4xnSDxMaL"),

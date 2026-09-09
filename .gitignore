@@ -21,6 +21,7 @@ backend/generated/audio/*
 backend/generated/video/*
 backend/generated/slides/*
 backend/generated/subtitles/*
+backend/generated/research/*
 backend/uploads/images/*
 !backend/generated/**/.gitkeep
 !backend/uploads/**/.gitkeep

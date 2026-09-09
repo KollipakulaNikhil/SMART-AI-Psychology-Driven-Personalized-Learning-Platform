@@ -319,3 +319,133 @@ export interface QuizAttemptResult {
   streak: number;
   answerKey: { correctIndex: number; explanation: string }[];
 }
+
+// ── Research Lab ────────────────────────────────────────────────────────────
+export type ResearchStatus = "queued" | "searching" | "snapshotting" | "ideating" | "ready" | "failed";
+export type SnapshotStatus = "pending" | "ready" | "unavailable";
+
+/** The AI's explanation of one source, written for this learner and this idea. */
+export interface SourceExplanationView {
+  whyItMatters: string;
+  keyTakeaway: string;
+  howItRelates: string;
+}
+
+/** On-demand plain-language walkthrough of one source. */
+export interface SourceDeepDiveView {
+  plainSummary: string;
+  problem: string;
+  approach: string;
+  findings: string;
+  limitations: string;
+  howToUse: string;
+  glossary: { term: string; meaning: string }[];
+}
+
+export interface ResearchPaperView {
+  index: number;
+  /** Bracket id used in the analysis text — "P1", "P2"… */
+  ref: string;
+  source: "arxiv" | "semanticscholar" | "openalex";
+  externalId: string;
+  title: string;
+  authors: string[];
+  year: number | null;
+  venue: string | null;
+  abstract: string | null;
+  url: string;
+  pdfUrl: string | null;
+  doi: string | null;
+  citationCount: number | null;
+  /** /static path of the rendered first page, when captured. */
+  snapshotUrl: string | null;
+  snapshotStatus: SnapshotStatus;
+  explanation: SourceExplanationView | null;
+  deepDive: SourceDeepDiveView | null;
+}
+
+export interface ResearchPatentView {
+  index: number;
+  /** Bracket id used in the analysis text — "T1", "T2"… */
+  ref: string;
+  source: "google_patents" | "patentsview";
+  patentNumber: string;
+  title: string;
+  assignee: string | null;
+  inventors: string[];
+  filingDate: string | null;
+  publicationDate: string | null;
+  abstract: string | null;
+  url: string;
+  pdfUrl: string | null;
+  snapshotUrl: string | null;
+  snapshotStatus: SnapshotStatus;
+  explanation: SourceExplanationView | null;
+  deepDive: SourceDeepDiveView | null;
+}
+
+export interface ResearchIdeaView {
+  title: string;
+  hypothesis: string;
+  description: string;
+  buildsOn: string[];
+  novelty: string;
+  feasibility: "low" | "medium" | "high";
+  methodology: string[];
+  firstSteps: string[];
+}
+
+export interface ResearchAnalysisView {
+  overview: string;
+  landscape: { theme: string; summary: string; refs: string[] }[];
+  gaps: string[];
+  ideas: ResearchIdeaView[];
+  nextSteps: string[];
+}
+
+export interface ResearchSourceReport {
+  name: string;
+  ok: boolean;
+  count: number;
+  note?: string | null;
+}
+
+export interface ResearchProjectView {
+  id: string;
+  title: string;
+  idea: string;
+  subject: string;
+  keywords: string[];
+  paperQueries: string[];
+  patentQueries: string[];
+  status: ResearchStatus;
+  stageMessage: string;
+  error: string | null;
+  papers: ResearchPaperView[];
+  patents: ResearchPatentView[];
+  analysis: ResearchAnalysisView | null;
+  sourcesSearched: ResearchSourceReport[];
+  links: { googleScholar: string; googlePatents: string; arxiv: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ResearchProjectSummary {
+  id: string;
+  title: string;
+  idea: string;
+  subject: string;
+  keywords: string[];
+  status: ResearchStatus;
+  stageMessage: string;
+  paperCount: number;
+  patentCount: number;
+  ideaCount: number;
+  createdAt: string;
+}
+
+export interface ResearchExplainResult {
+  kind: "paper" | "patent";
+  index: number;
+  deepDive: SourceDeepDiveView;
+}

@@ -14,6 +14,8 @@ export const DIRS = {
   video: path.join(APP_ROOT, "generated", "video"),
   slides: path.join(APP_ROOT, "generated", "slides"),
   subtitles: path.join(APP_ROOT, "generated", "subtitles"),
+  /** Research Lab: first-page snapshots of papers and patents, per project. */
+  research: path.join(APP_ROOT, "generated", "research"),
   logs: path.join(APP_ROOT, "logs"),
 } as const;
 

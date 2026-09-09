@@ -1,4 +1,4 @@
-import { apiDownload, apiGet, apiPost, apiPostForm } from "./api";
+import { apiDelete, apiDownload, apiGet, apiPost, apiPostForm } from "./api";
 import type {
   AnalyticsData,
   CourseView,
@@ -13,6 +13,9 @@ import type {
   QuestionView,
   QuizAttemptResult,
   RecentTopicView,
+  ResearchExplainResult,
+  ResearchProjectSummary,
+  ResearchProjectView,
   SessionData,
 } from "@/lib/types";
 
@@ -116,6 +119,17 @@ export const askTutor = (
   slideIndex: number | undefined,
   history: TutorTurn[]
 ) => apiPost<TutorReply>("/tutor/chat", { presentationId, message, slideIndex, history });
+
+// ── Research Lab ────────────────────────────────────────────────────────────
+/** Shares a research idea; the server answers 202 and works in the background. */
+export const createResearch = (idea: string, title?: string) =>
+  apiPost<ResearchProjectView>("/research", { idea, title: title || undefined });
+export const listResearch = () => apiGet<ResearchProjectSummary[]>("/research");
+export const getResearch = (id: string) => apiGet<ResearchProjectView>(`/research/${id}`);
+export const deleteResearch = (id: string) => apiDelete<{ deleted: boolean }>(`/research/${id}`);
+/** Deep, plain-language walkthrough of one paper/patent in the learner's style. */
+export const explainResearchSource = (id: string, kind: "paper" | "patent", index: number) =>
+  apiPost<ResearchExplainResult>(`/research/${id}/explain`, { kind, index });
 
 // ── Downloads ───────────────────────────────────────────────────────────────
 export type DownloadableAsset = "ppt" | "pdf" | "audio" | "video" | "subtitles";
