@@ -17,6 +17,9 @@ export const createCourseSchema = z.object({
 
 export const createCourseFromPdfSchema = z.object({
   language: z.enum(LESSON_LANGUAGES).optional().default(DEFAULT_LANGUAGE),
+  /** Blob URL of the PDF the browser already uploaded directly to Vercel Blob. */
+  pdfUrl: z.string().url(),
+  fileName: z.string().trim().min(1).max(200),
 });
 
 export const courseIdParam = z.object({

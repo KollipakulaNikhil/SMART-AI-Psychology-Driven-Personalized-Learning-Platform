@@ -2,16 +2,20 @@ export const maxDuration = 90;
 
 import { apiHandler } from "@/lib/api/apiHandler";
 import { requireAuth } from "@/lib/api/requireAuth";
-import { parsePdfUpload } from "@/lib/api/parsePdfUpload";
+import { parseJson } from "@/lib/api/validate";
 import { checkGenerationRateLimit } from "@/lib/api/rateLimit";
 import { extractPdfText } from "@smart-ai/core/services/pdfExtract.service";
+import { fetchArtifactBuffer, deleteArtifact } from "@smart-ai/core/storage/blob";
 import { generateContentFromPdf, generateContentFromPdfSchema } from "@/lib/controllers/generate.controller";
 
 export const POST = apiHandler(async (req) => {
   const user = await requireAuth(req);
   checkGenerationRateLimit(req, user.firebaseUid);
-  const { file, fields } = await parsePdfUpload(req, "file");
-  const body = generateContentFromPdfSchema.parse(fields);
-  const { text, truncated } = await extractPdfText(file.buffer);
-  return generateContentFromPdf(user, body, { text, truncated, fileName: file.originalname });
+  const body = await parseJson(generateContentFromPdfSchema, req);
+
+  const buffer = await fetchArtifactBuffer(body.pdfUrl);
+  const { text, truncated } = await extractPdfText(buffer);
+  deleteArtifact(body.pdfUrl).catch(() => undefined); // ephemeral source, no need to keep it
+
+  return generateContentFromPdf(user, body, { text, truncated, fileName: body.fileName });
 });

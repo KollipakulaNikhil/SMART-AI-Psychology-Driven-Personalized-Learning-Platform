@@ -1,4 +1,5 @@
-import { apiDelete, apiDownload, apiGet, apiPost, apiPostForm } from "./api";
+import { apiDelete, apiDownload, apiGet, apiPost } from "./api";
+import { uploadPdfToBlob } from "@/lib/uploadPdfToBlob";
 import type {
   AnalyticsData,
   CourseView,
@@ -52,20 +53,20 @@ export const generateContent = (payload: GenerateContentPayload) =>
     ...payload,
     focus: payload.focus || undefined,
   });
-/** Same as `generateContent`, but grounds the lesson in an uploaded PDF's text. */
-export const generateContentFromPdf = (file: File, payload: GenerateContentPayload) => {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("topic", payload.topic);
-  if (payload.focus) formData.append("focus", payload.focus);
-  if (payload.durationMin !== undefined) formData.append("durationMin", String(payload.durationMin));
-  if (payload.detailLevel) formData.append("detailLevel", payload.detailLevel);
-  if (payload.subtitles !== undefined) formData.append("subtitles", String(payload.subtitles));
-  if (payload.language) formData.append("language", payload.language);
-  if (payload.boardLanguage) formData.append("boardLanguage", payload.boardLanguage);
-  if (payload.courseId) formData.append("courseId", payload.courseId);
-  if (payload.moduleIndex !== undefined) formData.append("moduleIndex", String(payload.moduleIndex));
-  return apiPostForm<PresentationDetail>("/generate/content/from-pdf", formData);
+/**
+ * Same as `generateContent`, but grounds the lesson in an uploaded PDF's
+ * text. The file goes straight from the browser to Vercel Blob storage
+ * first (serverless functions cap request bodies at ~4.5MB, well under
+ * what a real PDF can be) — only the resulting Blob URL is posted here.
+ */
+export const generateContentFromPdf = async (file: File, payload: GenerateContentPayload) => {
+  const { url, fileName } = await uploadPdfToBlob(file);
+  return apiPost<PresentationDetail>("/generate/content/from-pdf", {
+    ...payload,
+    focus: payload.focus || undefined,
+    pdfUrl: url,
+    fileName,
+  });
 };
 export const generatePpt = (presentationId: string) =>
   apiPost<PresentationDetail>("/generate/ppt", { presentationId });
@@ -84,11 +85,9 @@ export const getAnalytics = () => apiGet<AnalyticsData>("/analytics");
 // ── Learning Paths ──────────────────────────────────────────────────────────
 export const createCourse = (goal: string, language: LessonLanguage) =>
   apiPost<CourseView>("/courses", { goal, language });
-export const createCourseFromPdf = (file: File, language: LessonLanguage) => {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("language", language);
-  return apiPostForm<CourseView>("/courses/from-pdf", formData);
+export const createCourseFromPdf = async (file: File, language: LessonLanguage) => {
+  const { url, fileName } = await uploadPdfToBlob(file);
+  return apiPost<CourseView>("/courses/from-pdf", { language, pdfUrl: url, fileName });
 };
 export const listCourses = () => apiGet<CourseView[]>("/courses");
 export const getCourse = (id: string) => apiGet<CourseView>(`/courses/${id}`);

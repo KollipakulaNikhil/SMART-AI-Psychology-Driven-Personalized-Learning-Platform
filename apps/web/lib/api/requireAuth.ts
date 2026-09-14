@@ -2,21 +2,11 @@ import { ApiError } from "@smart-ai/core/utils/ApiError";
 import { firebaseAuth } from "@smart-ai/core/config/firebase";
 import { User, type UserDocument } from "@smart-ai/core/models/User";
 
-/**
- * Verifies the Firebase ID token from the Authorization header and returns
- * the corresponding Mongo user, creating it on first sight. Call at the top
- * of any route handler that requires auth (mirrors the old Express
- * `requireAuth` middleware, minus the middleware chaining).
- */
-export async function requireAuth(req: Request): Promise<UserDocument> {
-  const header = req.headers.get("authorization");
-  if (!header || !header.startsWith("Bearer ")) {
-    throw ApiError.unauthorized("Missing bearer token");
-  }
-
+/** Verifies a raw Firebase ID token and upserts/returns the corresponding Mongo user. */
+export async function requireAuthToken(idToken: string): Promise<UserDocument> {
   let decoded;
   try {
-    decoded = await firebaseAuth().verifyIdToken(header.slice("Bearer ".length));
+    decoded = await firebaseAuth().verifyIdToken(idToken);
   } catch {
     throw ApiError.unauthorized("Invalid or expired session token");
   }
@@ -24,7 +14,7 @@ export async function requireAuth(req: Request): Promise<UserDocument> {
   const provider = decoded.firebase?.sign_in_provider;
   const authProvider = provider === "google.com" ? "google" : provider === "password" ? "password" : "unknown";
 
-  const user = await User.findOneAndUpdate(
+  return User.findOneAndUpdate(
     { firebaseUid: decoded.uid },
     {
       $set: {
@@ -37,6 +27,18 @@ export async function requireAuth(req: Request): Promise<UserDocument> {
     },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+}
 
-  return user;
+/**
+ * Verifies the Firebase ID token from the Authorization header and returns
+ * the corresponding Mongo user, creating it on first sight. Call at the top
+ * of any route handler that requires auth (mirrors the old Express
+ * `requireAuth` middleware, minus the middleware chaining).
+ */
+export async function requireAuth(req: Request): Promise<UserDocument> {
+  const header = req.headers.get("authorization");
+  if (!header || !header.startsWith("Bearer ")) {
+    throw ApiError.unauthorized("Missing bearer token");
+  }
+  return requireAuthToken(header.slice("Bearer ".length));
 }

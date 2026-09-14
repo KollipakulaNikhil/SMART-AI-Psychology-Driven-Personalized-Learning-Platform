@@ -15,11 +15,24 @@ const nextConfig: NextConfig = {
     "ffmpeg-static",
     "ffprobe-static",
     "pdf-parse",
+    "@napi-rs/canvas",
     "pptxgenjs",
     "pdfkit",
     "firebase-admin",
     "mongoose",
   ],
+  // Being external keeps ffmpeg-static/ffprobe-static's JS out of the webpack
+  // bundle, but Vercel's own file tracer still decides what to physically
+  // ship for the deployed function — and it was dropping the large ffmpeg
+  // binary itself (a bare path.join(__dirname, "ffmpeg"), not a `require()`,
+  // so the tracer doesn't reliably see it), producing a runtime ENOENT.
+  // Force-include both binaries explicitly.
+  outputFileTracingIncludes: {
+    "/api/generate/audio": [
+      "../../node_modules/ffmpeg-static/**",
+      "../../node_modules/ffprobe-static/**",
+    ],
+  },
   images: {
     // Slide previews, generated assets, and Pexels imagery.
     remotePatterns: [

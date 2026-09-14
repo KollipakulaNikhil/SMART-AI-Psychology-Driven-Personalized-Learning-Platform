@@ -38,11 +38,9 @@ export const generateContentSchema = z.object({
 });
 
 export const generateContentFromPdfSchema = generateContentSchema.extend({
-  subtitles: z
-    .union([z.boolean(), z.enum(["true", "false"])])
-    .optional()
-    .default(true)
-    .transform((value) => value === true || value === "true"),
+  /** Blob URL of the PDF the browser already uploaded directly to Vercel Blob. */
+  pdfUrl: z.string().url(),
+  fileName: z.string().trim().min(1).max(200),
 });
 
 export const presentationIdSchema = z.object({

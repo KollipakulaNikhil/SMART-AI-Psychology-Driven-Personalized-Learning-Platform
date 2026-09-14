@@ -1,3 +1,14 @@
+// pdf-parse@2 pulls in pdfjs-dist, whose module-load-time code references the
+// browser-only `DOMMatrix` global even for plain text extraction (no
+// rendering). Node has no such global, so on a cold serverless start this
+// throws "DOMMatrix is not defined" before pdf-parse ever runs — polyfill it
+// from @napi-rs/canvas (pdf-parse's own dependency, already installed)
+// before requiring pdf-parse.
+import { DOMMatrix } from "@napi-rs/canvas";
+if (typeof (globalThis as { DOMMatrix?: unknown }).DOMMatrix === "undefined") {
+  (globalThis as unknown as { DOMMatrix: unknown }).DOMMatrix = DOMMatrix;
+}
+
 import { PDFParse } from "pdf-parse";
 import { ApiError } from "../utils/ApiError";
 
