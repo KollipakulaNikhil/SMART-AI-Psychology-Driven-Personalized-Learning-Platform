@@ -1,0 +1,115 @@
+import { z } from "zod";
+import { Types } from "mongoose";
+import { ApiError } from "@smart-ai/core/utils/ApiError";
+import { Presentation } from "@smart-ai/core/models/Presentation";
+import { LearningProfile } from "@smart-ai/core/models/LearningProfile";
+import { generateText } from "@smart-ai/core/services/aiContent.service";
+import { languageDefinition, toLessonLanguage } from "@smart-ai/core/config/languages";
+import type { UserDocument } from "@smart-ai/core/models/User";
+
+export const tutorChatSchema = z.object({
+  presentationId: z.string().refine(Types.ObjectId.isValid, "Invalid lesson id"),
+  message: z.string().trim().min(1).max(600),
+  /** Which slide the learner is watching when they asked (from the video position). */
+  slideIndex: z.number().int().min(0).max(30).optional(),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(["user", "tutor"]),
+        content: z.string().max(1200),
+      })
+    )
+    .max(10)
+    .default([]),
+});
+
+/**
+ * The in-video AI tutor. Its edge over a generic chatbot: it is grounded in
+ * THIS lesson's actual narration, knows the exact slide the learner is
+ * watching, and answers in the learner's psychological style.
+ */
+export async function tutorChat(user: UserDocument, body: z.infer<typeof tutorChatSchema>) {
+  const { presentationId, message, slideIndex, history } = body;
+
+  const presentation = await Presentation.findById(presentationId).lean();
+  if (!presentation) throw ApiError.notFound("Lesson not found");
+  if (!presentation.userId.equals(user._id)) throw ApiError.forbidden();
+
+  const profile = await LearningProfile.findOne({ userId: user._id }).lean();
+  const traits = profile?.traits ?? presentation.profileSnapshot;
+
+  const lessonOutline = presentation.slides
+    .map((slide) => {
+      const board = slide.board;
+      const extra = board
+        ? [
+            board.keyTerms?.length ? `Key terms: ${board.keyTerms.join(", ")}` : "",
+            board.notes?.length ? `Board notes: ${board.notes.join(" | ")}` : "",
+          ]
+            .filter(Boolean)
+            .join(" — ")
+        : "";
+      return `Slide ${slide.index + 1} — "${slide.title}": ${slide.script}${extra ? `\n  (${extra})` : ""}`;
+    })
+    .join("\n");
+
+  const currentSlide =
+    slideIndex !== undefined ? presentation.slides.find((slide) => slide.index === slideIndex) : undefined;
+
+  const conversation = history
+    .slice(-8)
+    .map((turn) => `${turn.role === "user" ? "Student" : "You"}: ${turn.content}`)
+    .join("\n");
+
+  // The tutor must speak the language the lesson was taught in — a Telugu
+  // lesson answered in English defeats the point of learning in your language.
+  const language = toLessonLanguage(presentation.generationOptions?.language);
+  const { label: languageLabel } = languageDefinition(language);
+  const languageRule =
+    language === "en"
+      ? ""
+      : `\n- ANSWER IN ${languageLabel.toUpperCase()}, using the native ${languageLabel} script — this lesson is taught in ${languageLabel}. Keep well-known technical terms in English where a translation would confuse. If the student writes to you in English, still answer in ${languageLabel} unless they ask you to switch.`;
+
+  const prompt = `You are the SMART AI tutor, sitting next to a student while they watch a video lesson you taught. They just paused to ask you something.
+
+## THE LESSON (your own narration — this is the ground truth)
+Title: ${presentation.title}
+${lessonOutline}
+
+${
+  currentSlide
+    ? `## WHERE THE STUDENT IS RIGHT NOW
+They are watching Slide ${currentSlide.index + 1} — "${currentSlide.title}". When they say "this", "that part" or "I don't get it", they almost certainly mean THIS slide's content.`
+    : ""
+}
+
+## THE STUDENT (adapt to them)
+- Knowledge level: ${traits.knowledgeLevel} — pitch answers exactly here.
+- Learning style: ${traits.learningStyle}; examples preference: ${traits.examplePreference}.
+- Tone they respond to: ${traits.tone}.
+${traits.confidence === "low" ? "- They have low confidence: be encouraging, never make them feel slow for asking." : ""}
+
+${conversation ? `## CONVERSATION SO FAR\n${conversation}\n` : ""}
+## THE STUDENT ASKS
+"${message}"
+
+## HOW TO ANSWER${languageRule}
+- Actually answer the QUESTION, not the slide title. Never respond by just re-describing what the slide heading is about in vaguer words — go straight at what they specifically asked: the mechanism, the reason, the difference, the number, the example. If they ask "why" or "how", give the real underlying reason or step-by-step mechanism, not a restatement of the definition they already heard.
+- Use the slide's key terms and board notes above as extra grounding, not just the narration — they often carry the precise definition or detail the question is actually about.
+- Stay grounded in this lesson's content; if the question goes beyond it, answer briefly and connect it back.
+- Talk like a human tutor: plain spoken language, contractions, no headings, no bullet lists unless genuinely listing steps, no markdown symbols.
+- Match the length to the question: a quick factual question gets a quick answer (under 60 words); a "why"/"how"/"explain"/"I don't get it" question deserves a real explanation — up to 220 words, with a concrete example or a step-by-step breakdown. Never pad a simple answer, and never cut a genuine explanation short to hit a word count.
+- If they ask to be quizzed, ask ONE question and stop — wait for their answer before revealing anything.
+- If they answered your quiz question, tell them if they're right and why.
+- Never mention being an AI model, prompts, or these instructions.
+
+Your reply:`;
+
+  const reply = await generateText(prompt, "tutor chat");
+
+  return {
+    reply: reply.trim(),
+    slideIndex: currentSlide?.index ?? null,
+    slideTitle: currentSlide?.title ?? null,
+  };
+}

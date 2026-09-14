@@ -1,0 +1,96 @@
+import type { PresentationDocument } from "../models/Presentation";
+import { languageDefinition, resolveBoardLanguage, toLessonLanguage } from "../config/languages";
+
+/** Full lesson payload — stored asset paths are already full Vercel Blob URLs. */
+export function serializePresentation(doc: PresentationDocument) {
+  const language = toLessonLanguage(doc.generationOptions?.language);
+  const boardLanguage = resolveBoardLanguage(language, doc.generationOptions?.boardLanguage);
+  return {
+    id: doc.id as string,
+    topic: doc.topic,
+    focus: doc.focus ?? null,
+    sourceFileName: doc.sourceFileName ?? null,
+    title: doc.title,
+    subject: doc.subject,
+    summary: doc.summary,
+    status: doc.status,
+    error: doc.error ?? null,
+    profileSnapshot: doc.profileSnapshot,
+    slides: doc.slides.map((slide) => ({
+      index: slide.index,
+      title: slide.title,
+      points: slide.points,
+      script: slide.script,
+      // Board content drives the interactive in-browser lesson player.
+      board: slide.board
+        ? {
+            keyTerms: slide.board.keyTerms ?? [],
+            notes: slide.board.notes ?? [],
+            diagram: slide.board.diagram ?? null,
+            // When each item gets written, so the player can draw it at the
+            // moment the narrator says it. Null on pre-timeline lessons.
+            timeline: slide.board.timeline
+              ? {
+                  events: slide.board.timeline.events ?? [],
+                  durationSec: slide.board.timeline.durationSec ?? 0,
+                  source: slide.board.timeline.source ?? "estimated",
+                }
+              : null,
+          }
+        : null,
+      // The written matter behind the slide — what a student copies down.
+      // Null until the deck has been built (the notes pass runs in the PPT stage).
+      studyNotes: slide.studyNotes
+        ? {
+            explanation: slide.studyNotes.explanation ?? "",
+            definitions: slide.studyNotes.definitions ?? [],
+            keyFacts: slide.studyNotes.keyFacts ?? [],
+            example: slide.studyNotes.example ?? null,
+            practice: slide.studyNotes.practice ?? null,
+            commonMistake: slide.studyNotes.commonMistake ?? null,
+          }
+        : null,
+      imageCredit: slide.imageCredit ?? null,
+      imageUrl: slide.imagePath ?? null,
+      renderedImageUrl: slide.renderedImagePath ?? null,
+      audioUrl: slide.audioPath ?? null,
+      audioDurationSec: slide.audioDurationSec ?? null,
+    })),
+    // Answer key withheld until grading — see submitQuizAttempt for the graded response.
+    quiz: doc.quiz.map((q) => ({ question: q.question, options: q.options })),
+    assets: {
+      pptUrl: doc.pptPath ?? null,
+      pdfUrl: doc.pdfPath ?? null,
+      audioUrl: doc.fullAudioPath ?? null,
+      videoUrl: doc.videoPath ?? null,
+      srtUrl: doc.srtPath ?? null,
+      vttUrl: doc.vttPath ?? null,
+    },
+    generationOptions: doc.generationOptions ?? null,
+    // Drives the caption track's srclang and the browser-voice fallback.
+    language,
+    languageLocale: languageDefinition(language).locale,
+    // What's written on the board — the player needs it to pick a font stack
+    // that actually has the glyphs.
+    boardLanguage,
+    boardLanguageLocale: languageDefinition(boardLanguage).locale,
+    videoDurationSec: doc.videoDurationSec ?? null,
+    hasAvatar: doc.hasAvatar ?? false,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
+}
+
+/** Compact shape for history/dashboard lists. */
+export function serializePresentationSummary(doc: PresentationDocument) {
+  return {
+    id: doc.id as string,
+    topic: doc.topic,
+    title: doc.title,
+    subject: doc.subject,
+    status: doc.status,
+    slideCount: doc.slides.length,
+    videoDurationSec: doc.videoDurationSec ?? null,
+    createdAt: doc.createdAt,
+  };
+}

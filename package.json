@@ -3,13 +3,18 @@
   "version": "1.0.0",
   "private": true,
   "description": "SMART AI — psychology-driven personalized AI learning platform",
+  "workspaces": [
+    "apps/web",
+    "apps/worker",
+    "packages/core"
+  ],
   "scripts": {
-    "install:all": "npm install --prefix backend && npm install --prefix frontend",
-    "dev:backend": "npm run dev --prefix backend",
-    "dev:frontend": "npm run dev --prefix frontend",
-    "dev": "concurrently -n api,web -c blue,magenta \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
-    "build": "npm run build --prefix backend && npm run build --prefix frontend",
-    "typecheck": "npm run typecheck --prefix backend && npm run typecheck --prefix frontend"
+    "dev:web": "npm run dev -w apps/web",
+    "dev:worker": "npm run dev -w apps/worker",
+    "dev": "npm run build -w packages/core && concurrently -n core,web,worker -c yellow,magenta,blue \"npm run dev -w packages/core\" \"npm run dev -w apps/web\" \"npm run dev -w apps/worker\"",
+    "build": "npm run build -w packages/core && npm run build -w apps/web",
+    "build:worker": "npm run build -w packages/core && npm run build -w apps/worker",
+    "typecheck": "npm run typecheck -w packages/core && npm run typecheck -w apps/web && npm run typecheck -w apps/worker"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

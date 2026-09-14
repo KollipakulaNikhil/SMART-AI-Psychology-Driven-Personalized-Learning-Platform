@@ -14,20 +14,8 @@ out/
 # Firebase service account
 **/serviceAccount.json
 
-# Generated runtime artifacts
-backend/generated/ppt/*
-backend/generated/pdf/*
-backend/generated/audio/*
-backend/generated/video/*
-backend/generated/slides/*
-backend/generated/subtitles/*
-backend/generated/research/*
-backend/uploads/images/*
-!backend/generated/**/.gitkeep
-!backend/uploads/**/.gitkeep
-
 # Source media kept outside public/ (not shipped) — re-extract scroll-frames from these
-frontend/assets-src/
+apps/web/assets-src/
 
 # Logs
 logs/
