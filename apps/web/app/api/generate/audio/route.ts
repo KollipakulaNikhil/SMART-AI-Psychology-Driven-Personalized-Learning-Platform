@@ -1,4 +1,4 @@
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 import { apiHandler } from "@/lib/api/apiHandler";
 import { requireAuth } from "@/lib/api/requireAuth";

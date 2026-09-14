@@ -609,15 +609,29 @@ export async function renderDeck(input: RenderDeckInput): Promise<RenderedDeck> 
   jobs.push({ render: (label) => renderEndSlide(title, summary, label) });
 
   const total = jobs.length;
-  const allPaths: string[] = [];
+  const allPaths: string[] = new Array(total);
   const contentPaths: string[] = [];
 
-  for (const [pageIndex, job] of jobs.entries()) {
-    const buffer = await job.render(`Page ${pageIndex + 1} / ${total}`);
-    const filename = `slide-${String(pageIndex + 1).padStart(3, "0")}.png`;
-    const { url } = await uploadArtifact("slides", presentationId, filename, buffer, { contentType: "image/png" });
-    allPaths.push(url);
-    if (job.slideIndex !== undefined) contentPaths[job.slideIndex] = url;
+  // Rendering + uploading each page is independent work — doing it one page at
+  // a time was the main reason a 30-45 page deck (slides + notes + example +
+  // practice + quiz + answer-key pages) could blow past even a 60s function
+  // budget. Batch with bounded concurrency so it's fast without opening
+  // dozens of simultaneous Blob uploads at once.
+  const CONCURRENCY = 6;
+  for (let start = 0; start < jobs.length; start += CONCURRENCY) {
+    const batch = jobs.slice(start, start + CONCURRENCY);
+    await Promise.all(
+      batch.map(async (job, offset) => {
+        const pageIndex = start + offset;
+        const buffer = await job.render(`Page ${pageIndex + 1} / ${total}`);
+        const filename = `slide-${String(pageIndex + 1).padStart(3, "0")}.png`;
+        const { url } = await uploadArtifact("slides", presentationId, filename, buffer, {
+          contentType: "image/png",
+        });
+        allPaths[pageIndex] = url;
+        if (job.slideIndex !== undefined) contentPaths[job.slideIndex] = url;
+      })
+    );
   }
 
   return { allPaths, coverPath: allPaths[0], contentPaths, endPath: allPaths[endJobIndex] };
