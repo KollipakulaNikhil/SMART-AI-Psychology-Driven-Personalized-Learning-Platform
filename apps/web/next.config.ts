@@ -32,6 +32,18 @@ const nextConfig: NextConfig = {
       "../../node_modules/ffmpeg-static/**",
       "../../node_modules/ffprobe-static/**",
     ],
+    // pdf-parse's pdfjs-dist dependency loads its worker via a dynamically
+    // computed path (`new Worker(new URL(...))`-style), not a static
+    // require() — the tracer misses it the same way it missed the ffmpeg
+    // binary above, producing a "Cannot find module .../pdf.worker.mjs" at
+    // runtime. course.controller.ts imports extractPdfText unconditionally,
+    // so even the plain (non-PDF) /api/courses route needs this.
+    "/api/courses": ["../../node_modules/pdf-parse/**", "../../node_modules/pdfjs-dist/**"],
+    "/api/courses/from-pdf": ["../../node_modules/pdf-parse/**", "../../node_modules/pdfjs-dist/**"],
+    "/api/generate/content/from-pdf": [
+      "../../node_modules/pdf-parse/**",
+      "../../node_modules/pdfjs-dist/**",
+    ],
   },
   images: {
     // Slide previews, generated assets, and Pexels imagery.
