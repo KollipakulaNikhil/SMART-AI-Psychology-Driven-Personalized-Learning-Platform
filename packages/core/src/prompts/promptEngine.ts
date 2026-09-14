@@ -103,7 +103,7 @@ ${params.deliveryStyle}
 ${params.narrationStyle}
 
 ## HARD REQUIREMENTS — follow every one exactly
-1. Produce EXACTLY ${params.slideCount} slides. Slide 1 opens with a hook that pulls the learner in; the final slide wraps up with the key takeaways.
+1. Produce EXACTLY ${params.slideCount} slides — no more, no less. ${params.slideCount} is both the target AND a strict upper bound enforced by validation: going even one slide over will REJECT your entire response. If the material feels bigger than that, go deeper per slide instead of adding slides. Slide 1 opens with a hook that pulls the learner in; the final slide wraps up with the key takeaways.
 2. Each slide's "script" is the spoken narration for that slide: roughly ${params.scriptWordsPerSlide} words (±20%), written as natural speech per the rules above.${params.durationLine ? `\n   ${params.durationLine}` : ""}
 3. ${params.explanationRule}
 4. Each slide's "board.keyTerms" are the 2-6 short words or phrases the narrator writes on the board on that slide (each under 6 words). They must be the exact terms the script emphasises.

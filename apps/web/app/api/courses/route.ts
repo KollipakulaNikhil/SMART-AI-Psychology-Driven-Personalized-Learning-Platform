@@ -1,3 +1,5 @@
+export const maxDuration = 300;
+
 import { apiHandler } from "@/lib/api/apiHandler";
 import { requireAuth } from "@/lib/api/requireAuth";
 import { parseJson } from "@/lib/api/validate";

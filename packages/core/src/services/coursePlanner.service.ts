@@ -95,7 +95,7 @@ function buildCoursePrompt(goal: string, traits: LearnerTraits): string {
 3. ${startPoint}
 4. ${motivationFrame}
 5. Sections AND the subtopics within them must build strictly in order — no forward references, no repeats. Early sections are foundational; later sections advance.
-6. Each subtopic's "topic" is a self-contained lesson topic (it becomes its own generated lesson). Its "focus" tells the lesson generator what to emphasise so it fits the roadmap.
+6. Each subtopic's "topic" is a self-contained lesson topic (it becomes its own generated lesson) — a short phrase, UNDER 200 CHARACTERS, never a full sentence or paragraph. Its "focus" tells the lesson generator what to emphasise so it fits the roadmap, UNDER 300 CHARACTERS.
 7. "subject" is the broad category (e.g. "Programming", "Physics", "Business").
 8. Every field must contain real, specific content — never an empty string or a placeholder.
 
@@ -160,9 +160,9 @@ ${sourceText}
 2. ${moduleGuidance} Distribute those lessons as subtopics across the sections (2-4 subtopics per section).
 3. ${startPoint}
 4. MOST subtopics must come directly from what the document actually covers — real topics, terms and structure it contains. Do not invent content the document doesn't support.
-5. ADD a small number of genuinely useful subtopics the document does not cover but a learner would need for full understanding: a prerequisite it assumes, a follow-on concept it references but doesn't explain, or an adjacent topic that completes the picture. Mark these the same way as any other subtopic (they become normal lessons), but ALSO list each one in "enrichment" as one sentence explaining what it adds and why it's useful given the document's content.
+5. ADD 2 to 6 genuinely useful subtopics the document does not cover but a learner would need for full understanding: a prerequisite it assumes, a follow-on concept it references but doesn't explain, or an adjacent topic that completes the picture. Mark these the same way as any other subtopic (they become normal lessons), but ALSO list each one in "enrichment" as ONE SENTENCE (max 240 characters) explaining what it adds and why it's useful given the document's content — "enrichment" MUST have between 2 and 6 entries, this is a strict validated bound, not a suggestion.
 6. Sections AND the subtopics within them must build strictly in order — no forward references, no repeats. Early sections are foundational; later sections advance.
-7. Each subtopic's "topic" is a self-contained lesson topic (it becomes its own generated lesson). Its "focus" tells the lesson generator what to emphasise so it fits the roadmap.
+7. Each subtopic's "topic" is a self-contained lesson topic (it becomes its own generated lesson) — a short phrase, UNDER 200 CHARACTERS, never a full sentence or paragraph. Its "focus" tells the lesson generator what to emphasise so it fits the roadmap, UNDER 300 CHARACTERS.
 8. "subject" is the broad category (e.g. "Biology", "Data Structures", "History").
 9. Every field must contain real, specific content grounded in the document — never an empty string, a placeholder, or a fact you're not confident the document supports.
 
