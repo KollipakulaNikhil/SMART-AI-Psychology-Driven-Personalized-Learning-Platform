@@ -1,12 +1,30 @@
-import { Flower2, Mountain, Sparkles } from "lucide-react";
+import { Flower2, Mountain, Skull, Sparkles } from "lucide-react";
 import type { GameMeta } from "./GameShell";
+import { BossPreview, BossScene } from "./scenes/BossScene";
 import { ClimbPreview, ClimbScene } from "./scenes/ClimbScene";
 import { ConstellationPreview, ConstellationScene } from "./scenes/ConstellationScene";
 import { GardenPreview, GardenScene } from "./scenes/GardenScene";
 
-export type GameId = "climb" | "constellation" | "bloom";
+export type GameId = "boss" | "climb" | "constellation" | "bloom";
 
 export const GAMES: (GameMeta & { id: GameId })[] = [
+  {
+    id: "boss",
+    name: "Boss Battle",
+    tagline:
+      "Duel the Void Warden. Right answers hurl spells; misses let him strike back. Lifelines, shields and boss rounds.",
+    icon: Skull,
+    tone: "dark",
+    sceneBg: "#0b0716",
+    unit: "Spells landed",
+    cta: "Begin the duel",
+    again: "Fight again",
+    intro: (total, sec) =>
+      `${total} questions in ${Math.ceil(total / 5)} stages. Land 70% to defeat the boss. Every 5th question is a boss round worth double; use 50/50 and Time Warp wisely, and chain 4 in a row to earn a shield. ${sec}s per question.`,
+    ranks: ["Boss obliterated", "Boss defeated", "Boss still standing"],
+    Scene: BossScene,
+    Preview: BossPreview,
+  },
   {
     id: "climb",
     name: "Knowledge Climb",

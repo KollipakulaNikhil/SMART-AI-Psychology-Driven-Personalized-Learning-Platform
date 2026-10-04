@@ -117,7 +117,7 @@ function derivePlan(style: Style, attention: Attention, level: Level): Plan {
       level === "advanced"
         ? "Precise terminology, formal definitions first"
         : "Everyday analogies before any jargon",
-    quiz: attention === "short" ? 3 : 5,
+    quiz: attention === "short" ? 8 : 12,
     narration: level === "advanced" ? "Brisk, respects your time" : "Measured, room to absorb",
   };
 }

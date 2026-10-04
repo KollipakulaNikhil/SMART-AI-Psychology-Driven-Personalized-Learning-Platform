@@ -3,9 +3,23 @@
 import { useMemo, type ComponentType, type ReactNode } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion, useTransform } from "framer-motion";
-import { CalendarClock, Flame, RotateCcw, Volume2, VolumeX, Zap, type LucideIcon } from "lucide-react";
+import {
+  CalendarClock,
+  Crown,
+  Flame,
+  Hourglass,
+  RotateCcw,
+  Shield,
+  Star,
+  Trophy,
+  Volume2,
+  VolumeX,
+  Zap,
+  type LucideIcon,
+} from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn, formatDate } from "@/lib/utils";
+import { BOSS_MULTIPLIER, STAGE_SIZE, TIME_WARP_SEC } from "./engine";
 import type { QuizGame } from "./useQuizGame";
 
 export type GameTone = "dark" | "light";
@@ -98,229 +112,475 @@ const TONES: Record<
 export function GameShell({ game, meta, children }: { game: QuizGame; meta: GameMeta; children: ReactNode }) {
   const t = TONES[meta.tone];
   const Icon = meta.icon;
-  const { phase, total, index, score, combo, floaters, muted, secs, question, current, pending, inRound, showQuestion } =
-    game;
+  const {
+    phase,
+    total,
+    index,
+    score,
+    combo,
+    floaters,
+    muted,
+    secs,
+    question,
+    current,
+    pending,
+    inRound,
+    showQuestion,
+  } = game;
+  const { lifelines, shields, eliminated, boss, stage, stages } = game;
+  const lastResult = game.results[game.results.length - 1];
+  const playing = phase !== "intro" && phase !== "summit";
 
-  const ringRemaining = useTransform(game.timeLeft, (v) => v / game.roundSec);
+  const ringRemaining = useTransform(game.timeLeft, (v) => Math.min(1, v / game.roundSec));
   const ringColor = useTransform(
     game.timeLeft,
     [0, game.roundSec * 0.25, game.roundSec],
-    ["#f87171", "#fbbf24", "#a5b4fc"]
+    ["#f87171", "#fbbf24", "#a5b4fc"],
+    { clamp: true },
   );
 
   const rank =
     game.correctCount === total ? meta.ranks[0] : game.correctCount / total >= 0.6 ? meta.ranks[1] : meta.ranks[2];
 
   return (
-    <div className="relative overflow-hidden rounded-3xl shadow-float ring-1 ring-black/10">
-      <div className="relative aspect-[1000/620] w-full select-none" style={{ backgroundColor: meta.sceneBg }}>
-        {children}
+    <div className="space-y-4">
+      <div className="relative overflow-hidden rounded-3xl shadow-float ring-1 ring-black/10">
+        <div className="relative aspect-[1000/620] w-full select-none" style={{ backgroundColor: meta.sceneBg }}>
+          {children}
 
-        {/* ── HUD ───────────────────────────────────────────────────────── */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3 sm:p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-black/35 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur">
-              {phase === "summit" ? "Finished" : `${Math.min(index + 1, total)} / ${total}`}
-            </span>
-            <span className="relative rounded-full bg-black/35 px-3 py-1 text-xs font-semibold text-amber-200 backdrop-blur">
-              <motion.span key={score} initial={{ scale: 1.3 }} animate={{ scale: 1 }} className="inline-block">
-                {score}
-              </motion.span>{" "}
-              pts
-              {floaters.map((f) => (
+          {/* ── HUD ───────────────────────────────────────────────────────── */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3 sm:p-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-black/35 px-3 py-1 text-xs font-semibold text-white/90 backdrop-blur">
+                {phase === "summit" ? "Finished" : `${Math.min(index + 1, total)} / ${total}`}
+              </span>
+              {playing && stages > 1 && (
                 <span
-                  key={f.id}
-                  className="absolute left-1/2 top-0 -translate-x-1/2 animate-float-up whitespace-nowrap font-bold text-amber-300"
-                >
-                  {f.text}
-                </span>
-              ))}
-            </span>
-            <AnimatePresence>
-              {combo >= 2 && (
-                <motion.span
-                  initial={{ opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.6 }}
                   className={cn(
-                    "flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold backdrop-blur",
-                    combo >= 5 ? "bg-orange-500/80 text-white" : "bg-amber-400/80 text-amber-950"
+                    "flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold backdrop-blur",
+                    boss ? "bg-rose-500/80 text-white" : "bg-black/35 text-white/90",
                   )}
                 >
-                  <Flame className="h-3.5 w-3.5" /> {combo}× combo
-                </motion.span>
+                  {boss ? <Crown className="h-3.5 w-3.5" /> : null}
+                  {boss ? "Boss" : `Stage ${stage + 1}/${stages}`}
+                </span>
               )}
-            </AnimatePresence>
-          </div>
+              {shields > 0 && (
+                <span className="flex items-center gap-1 rounded-full bg-sky-500/70 px-2.5 py-1 text-xs font-bold text-white backdrop-blur">
+                  {Array.from({ length: shields }, (_, i) => (
+                    <Shield key={i} className="h-3.5 w-3.5 fill-current" />
+                  ))}
+                </span>
+              )}
+              <span className="relative rounded-full bg-black/35 px-3 py-1 text-xs font-semibold text-amber-200 backdrop-blur">
+                <motion.span key={score} initial={{ scale: 1.3 }} animate={{ scale: 1 }} className="inline-block">
+                  {score}
+                </motion.span>{" "}
+                pts
+                {floaters.map((f) => (
+                  <span
+                    key={f.id}
+                    className="absolute left-1/2 top-0 -translate-x-1/2 animate-float-up whitespace-nowrap font-bold text-amber-300"
+                  >
+                    {f.text}
+                  </span>
+                ))}
+              </span>
+              <AnimatePresence>
+                {combo >= 2 && (
+                  <motion.span
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.6 }}
+                    className={cn(
+                      "flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold backdrop-blur",
+                      combo >= 5 ? "bg-orange-500/80 text-white" : "bg-amber-400/80 text-amber-950",
+                    )}
+                  >
+                    <Flame className="h-3.5 w-3.5" /> {combo}× combo
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </div>
 
-          <div className="pointer-events-auto flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => game.setMuted((m) => !m)}
-              className="rounded-full bg-black/35 p-2 text-white/80 backdrop-blur transition hover:bg-black/50"
-              aria-label={muted ? "Unmute" : "Mute"}
-            >
-              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </button>
-            <div
-              className={cn(
-                "relative grid h-11 w-11 place-items-center rounded-full bg-black/35 backdrop-blur transition-opacity",
-                inRound ? "opacity-100" : "opacity-0"
-              )}
-            >
-              <svg viewBox="0 0 40 40" className="absolute inset-0 h-full w-full -rotate-90">
-                <circle cx={20} cy={20} r={17} fill="none" stroke="#ffffff" strokeOpacity={0.15} strokeWidth={3} />
-                <motion.circle
-                  cx={20}
-                  cy={20}
-                  r={17}
-                  fill="none"
-                  strokeWidth={3}
-                  strokeLinecap="round"
-                  style={{ pathLength: ringRemaining, stroke: ringColor }}
-                />
-              </svg>
-              <span className="text-xs font-bold tabular-nums text-white">{secs}</span>
+            <div className="pointer-events-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => game.setMuted((m) => !m)}
+                className="rounded-full bg-black/35 p-2 text-white/80 backdrop-blur transition hover:bg-black/50"
+                aria-label={muted ? "Unmute" : "Mute"}
+              >
+                {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              </button>
+              <div
+                className={cn(
+                  "relative grid h-11 w-11 place-items-center rounded-full bg-black/35 backdrop-blur transition-opacity",
+                  inRound ? "opacity-100" : "opacity-0",
+                )}
+              >
+                <svg viewBox="0 0 40 40" className="absolute inset-0 h-full w-full -rotate-90">
+                  <circle cx={20} cy={20} r={17} fill="none" stroke="#ffffff" strokeOpacity={0.15} strokeWidth={3} />
+                  <motion.circle
+                    cx={20}
+                    cy={20}
+                    r={17}
+                    fill="none"
+                    strokeWidth={3}
+                    strokeLinecap="round"
+                    style={{ pathLength: ringRemaining, stroke: ringColor }}
+                  />
+                </svg>
+                <span className="text-xs font-bold tabular-nums text-white">{secs}</span>
+              </div>
             </div>
           </div>
+
+          {/* ── Feedback fx ─────────────────────────────────────────────────── */}
+          {lastResult && phase !== "summit" && (
+            <>
+              {lastResult.correct && <Burst key={`b${game.runId}-${game.results.length}`} big={lastResult.boss} />}
+              {!lastResult.correct && !lastResult.shielded && (
+                <motion.div
+                  key={`d${game.runId}-${game.results.length}`}
+                  initial={{ opacity: 0.55 }}
+                  animate={{ opacity: 0 }}
+                  transition={{ duration: 0.7 }}
+                  className="pointer-events-none absolute inset-0 shadow-[inset_0_0_120px_30px_rgba(244,63,94,0.85)]"
+                />
+              )}
+            </>
+          )}
+          {playing && (boss || index % STAGE_SIZE === 0) && (
+            <motion.div
+              key={`banner${game.runId}-${index}`}
+              initial={{ opacity: 0, scale: 0.7 }}
+              animate={{ opacity: [0, 1, 1, 0], scale: [0.7, 1.05, 1, 1.1] }}
+              transition={{ duration: 1.8, times: [0, 0.2, 0.75, 1] }}
+              className="pointer-events-none absolute inset-x-0 top-[34%] z-10 flex justify-center"
+            >
+              <div
+                className={cn(
+                  "rounded-2xl px-6 py-3 text-center shadow-float backdrop-blur-md",
+                  boss ? "bg-rose-600/85 text-white" : "bg-black/55 text-white",
+                )}
+              >
+                <p className="font-display text-2xl font-extrabold tracking-wide sm:text-3xl">
+                  {boss ? "BOSS ROUND" : `STAGE ${stage + 1}`}
+                </p>
+                <p className="text-xs font-semibold uppercase tracking-widest text-white/80">
+                  {boss ? `${BOSS_MULTIPLIER}× points` : `${stages} stages · ${total} questions`}
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Intro / finish overlays ─────────────────────────────────────── */}
+          {phase === "summit" && <Confetti />}
+          <AnimatePresence>
+            {phase === "intro" && (
+              <Overlay key="intro" tone={meta.tone}>
+                <Icon className="mx-auto h-10 w-10 text-amber-400" />
+                <h2 className={cn("mt-3 font-display text-2xl font-bold sm:text-3xl", t.title)}>{meta.name}</h2>
+                <p className={cn("mx-auto mt-2 max-w-md text-sm", t.muted)}>{meta.intro(total, game.roundSec)}</p>
+                <Button variant="gradient" size="lg" className="mt-6" onClick={game.start}>
+                  <Zap className="h-4 w-4" /> {meta.cta}
+                </Button>
+                <p className={cn("mt-3 text-xs", t.faint)}>Keys 1–4 answer · F 50/50 · T time warp · Enter continues</p>
+              </Overlay>
+            )}
+            {phase === "summit" && (
+              <Overlay key="summit" tone={meta.tone}>
+                <p className="eyebrow justify-center text-amber-500">{rank}</p>
+                <h2 className={cn("mt-2 font-display text-3xl font-bold sm:text-4xl", t.title)}>{score} pts</h2>
+                {game.newBest ? (
+                  <p className="mt-1 flex items-center justify-center gap-1.5 text-sm font-semibold text-amber-500">
+                    <Trophy className="h-4 w-4" /> New personal best!
+                  </p>
+                ) : game.best > 0 ? (
+                  <p className={cn("mt-1 text-xs", t.faint)}>Personal best: {game.best} pts</p>
+                ) : null}
+                {game.stageStars.length > 0 && (
+                  <div className="mt-3 flex flex-wrap justify-center gap-2">
+                    {game.stageStars.map((n, i) => (
+                      <span key={i} className={cn("flex items-center gap-0.5 rounded-full px-2.5 py-1", t.stat)}>
+                        {[0, 1, 2].map((k) => (
+                          <Star
+                            key={k}
+                            className={cn(
+                              "h-3.5 w-3.5",
+                              k < n ? "fill-amber-400 text-amber-400" : "text-current opacity-25",
+                            )}
+                          />
+                        ))}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className={cn("mx-auto mt-4 grid max-w-sm grid-cols-3 gap-2", t.title)}>
+                  <Stat label={meta.unit} value={`${game.correctCount}/${total}`} cls={t.stat} labelCls={t.statLabel} />
+                  <Stat
+                    label="Accuracy"
+                    value={`${Math.round((game.correctCount / total) * 100)}%`}
+                    cls={t.stat}
+                    labelCls={t.statLabel}
+                  />
+                  <Stat label="Best combo" value={`${game.bestCombo}×`} cls={t.stat} labelCls={t.statLabel} />
+                </div>
+                <div className={cn("mx-auto mt-4 min-h-[2.5rem] max-w-md text-sm", t.muted)}>
+                  {game.attempt ? (
+                    <p className="flex items-center justify-center gap-2">
+                      <CalendarClock className="h-4 w-4 text-amber-500" />
+                      {game.attempt.passed
+                        ? `Smart Review returns on ${formatDate(game.attempt.nextReviewAt)}`
+                        : "Below 60% — this comes back tomorrow"}
+                      {game.attempt.streak > 1 && ` · 🔥 ${game.attempt.streak}-day streak`}
+                    </p>
+                  ) : (
+                    <p className={t.faint}>Recording your run…</p>
+                  )}
+                </div>
+                <div className="mt-5 flex flex-wrap justify-center gap-2">
+                  <Button variant="gradient" onClick={game.start}>
+                    <RotateCcw className="h-4 w-4" /> {meta.again}
+                  </Button>
+                  <Link
+                    href={`/dashboard/lesson/${game.lesson.id}`}
+                    className={cn(buttonVariants({ variant: "outline" }), t.outlineBtn)}
+                  >
+                    Back to lesson
+                  </Link>
+                </div>
+              </Overlay>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* ── Intro / finish overlays ─────────────────────────────────────── */}
-        {phase === "summit" && <Confetti />}
-        <AnimatePresence>
-          {phase === "intro" && (
-            <Overlay key="intro" tone={meta.tone}>
-              <Icon className="mx-auto h-10 w-10 text-amber-400" />
-              <h2 className={cn("mt-3 font-display text-2xl font-bold sm:text-3xl", t.title)}>{meta.name}</h2>
-              <p className={cn("mx-auto mt-2 max-w-md text-sm", t.muted)}>{meta.intro(total, game.roundSec)}</p>
-              <Button variant="gradient" size="lg" className="mt-6" onClick={game.start}>
-                <Zap className="h-4 w-4" /> {meta.cta}
-              </Button>
-              <p className={cn("mt-3 text-xs", t.faint)}>Keys 1–4 answer · Enter continues</p>
-            </Overlay>
-          )}
-          {phase === "summit" && (
-            <Overlay key="summit" tone={meta.tone}>
-              <p className="eyebrow justify-center text-amber-500">{rank}</p>
-              <h2 className={cn("mt-2 font-display text-3xl font-bold sm:text-4xl", t.title)}>{score} pts</h2>
-              <div className={cn("mx-auto mt-4 grid max-w-sm grid-cols-3 gap-2", t.title)}>
-                <Stat label={meta.unit} value={`${game.correctCount}/${total}`} cls={t.stat} labelCls={t.statLabel} />
-                <Stat
-                  label="Accuracy"
-                  value={`${Math.round((game.correctCount / total) * 100)}%`}
-                  cls={t.stat}
-                  labelCls={t.statLabel}
-                />
-                <Stat label="Best combo" value={`${game.bestCombo}×`} cls={t.stat} labelCls={t.statLabel} />
+        {/* ── Question card: overlays the scene on wide screens, stacks below on phones */}
+        <AnimatePresence mode="wait">
+          {showQuestion && question && (
+            <motion.div
+              key={`${game.runId}-${index}`}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.28, ease: "easeOut" }}
+              style={{ backgroundColor: meta.sceneBg }}
+              className={cn(
+                "p-4 sm:p-5 md:!bg-transparent",
+                "md:absolute md:bottom-5 md:right-5 md:w-[min(560px,58%)] md:rounded-2xl md:border md:shadow-float md:backdrop-blur-xl",
+                t.card,
+                meta.tone === "dark" ? "md:!bg-white/[0.08]" : "md:!bg-white/85",
+              )}
+            >
+              {boss && (
+                <p className="mb-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-rose-400">
+                  <Crown className="h-3.5 w-3.5" /> Boss round · {BOSS_MULTIPLIER}× points
+                </p>
+              )}
+              <p className="font-display text-base font-semibold leading-snug sm:text-lg">{question.question}</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {question.options.map((option, i) => {
+                  const isPicked = current ? current.answer === i : pending === i;
+                  const isCorrect = current?.correctIndex === i;
+                  const crossed = eliminated.includes(i) && !current;
+                  return (
+                    <motion.button
+                      key={i}
+                      type="button"
+                      disabled={phase !== "question" || crossed}
+                      onClick={() => void game.submitAnswer(i)}
+                      whileTap={phase === "question" ? { scale: 0.97 } : undefined}
+                      animate={current && isPicked && !current.correct ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
+                      transition={{ duration: 0.35 }}
+                      className={cn(
+                        "flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-default",
+                        !current && !isPicked && !crossed && t.optionIdle,
+                        crossed && cn(t.optionDim, "line-through"),
+                        !current && isPicked && cn(t.optionPicked, "animate-pulse-soft"),
+                        current && isCorrect && t.optionCorrect,
+                        current && isPicked && !isCorrect && t.optionWrong,
+                        current && !isPicked && !isCorrect && t.optionDim,
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md text-[11px] font-bold",
+                          t.keycap,
+                        )}
+                      >
+                        {i + 1}
+                      </span>
+                      <span>{option}</span>
+                    </motion.button>
+                  );
+                })}
               </div>
-              <div className={cn("mx-auto mt-4 min-h-[2.5rem] max-w-md text-sm", t.muted)}>
-                {game.attempt ? (
-                  <p className="flex items-center justify-center gap-2">
-                    <CalendarClock className="h-4 w-4 text-amber-500" />
-                    {game.attempt.passed
-                      ? `Smart Review returns on ${formatDate(game.attempt.nextReviewAt)}`
-                      : "Below 60% — this comes back tomorrow"}
-                    {game.attempt.streak > 1 && ` · 🔥 ${game.attempt.streak}-day streak`}
-                  </p>
-                ) : (
-                  <p className={t.faint}>Recording your run…</p>
+
+              {phase === "question" && (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <LifelineButton
+                    label="50/50"
+                    keycap="F"
+                    count={lifelines.fifty}
+                    disabled={lifelines.fifty < 1 || eliminated.length > 0 || game.hinting}
+                    onClick={() => void game.castFifty()}
+                    cls={t.outlineBtn}
+                    keyCls={t.keycap}
+                  />
+                  <LifelineButton
+                    icon={<Hourglass className="h-3.5 w-3.5" />}
+                    label={`+${TIME_WARP_SEC}s`}
+                    keycap="T"
+                    count={lifelines.warp}
+                    disabled={lifelines.warp < 1}
+                    onClick={game.castWarp}
+                    cls={t.outlineBtn}
+                    keyCls={t.keycap}
+                  />
+                  <span className={cn("ml-auto text-[11px]", t.faint)}>
+                    {shields > 0 ? `${shields} shield${shields > 1 ? "s" : ""} ready` : "4 in a row earns a shield"}
+                  </span>
+                </div>
+              )}
+
+              <AnimatePresence>
+                {current && !current.correct && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <p className={cn("text-sm", t.muted)}>
+                        <span className={cn("font-semibold", t.wrongLabel)}>
+                          {current.shielded
+                            ? "Shield absorbed it — "
+                            : current.answer === null
+                              ? "Out of time — "
+                              : "Not quite — "}
+                        </span>
+                        {current.explanation}
+                      </p>
+                      <Button size="sm" variant="gradient" className="shrink-0" onClick={() => void game.next()}>
+                        Continue
+                      </Button>
+                    </div>
+                  </motion.div>
                 )}
-              </div>
-              <div className="mt-5 flex flex-wrap justify-center gap-2">
-                <Button variant="gradient" onClick={game.start}>
-                  <RotateCcw className="h-4 w-4" /> {meta.again}
-                </Button>
-                <Link
-                  href={`/dashboard/lesson/${game.lesson.id}`}
-                  className={cn(buttonVariants({ variant: "outline" }), t.outlineBtn)}
-                >
-                  Back to lesson
-                </Link>
-              </div>
-            </Overlay>
+              </AnimatePresence>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
+      {phase === "summit" && <ReviewPanel game={game} meta={meta} />}
+    </div>
+  );
+}
 
-      {/* ── Question card: overlays the scene on wide screens, stacks below on phones */}
-      <AnimatePresence mode="wait">
-        {showQuestion && question && (
-          <motion.div
-            key={`${game.runId}-${index}`}
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.28, ease: "easeOut" }}
-            style={{ backgroundColor: meta.sceneBg }}
-            className={cn(
-              "p-4 sm:p-5 md:!bg-transparent",
-              "md:absolute md:bottom-5 md:right-5 md:w-[min(560px,58%)] md:rounded-2xl md:border md:shadow-float md:backdrop-blur-xl",
-              t.card,
-              meta.tone === "dark" ? "md:!bg-white/[0.08]" : "md:!bg-white/85"
-            )}
-          >
-            <p className="font-display text-base font-semibold leading-snug sm:text-lg">{question.question}</p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {question.options.map((option, i) => {
-                const isPicked = current ? current.answer === i : pending === i;
-                const isCorrect = current?.correctIndex === i;
-                return (
-                  <motion.button
-                    key={i}
-                    type="button"
-                    disabled={phase !== "question"}
-                    onClick={() => void game.submitAnswer(i)}
-                    whileTap={phase === "question" ? { scale: 0.97 } : undefined}
-                    animate={current && isPicked && !current.correct ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
-                    transition={{ duration: 0.35 }}
-                    className={cn(
-                      "flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-default",
-                      !current && !isPicked && t.optionIdle,
-                      !current && isPicked && cn(t.optionPicked, "animate-pulse-soft"),
-                      current && isCorrect && t.optionCorrect,
-                      current && isPicked && !isCorrect && t.optionWrong,
-                      current && !isPicked && !isCorrect && t.optionDim
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md text-[11px] font-bold",
-                        t.keycap
-                      )}
-                    >
-                      {i + 1}
-                    </span>
-                    <span>{option}</span>
-                  </motion.button>
-                );
-              })}
-            </div>
+function ReviewPanel({ game, meta }: { game: QuizGame; meta: GameMeta }) {
+  const missed = game.results.map((r, i) => ({ r, q: game.questions[i], i })).filter(({ r }) => !r.correct);
+  return (
+    <section className="rounded-3xl border border-border bg-card p-5 shadow-soft sm:p-6">
+      <h3 className="font-display text-lg font-semibold">
+        {missed.length === 0
+          ? "Flawless run — nothing to review"
+          : `Review ${missed.length} missed question${missed.length > 1 ? "s" : ""}`}
+      </h3>
+      {missed.length === 0 ? (
+        <p className="mt-1 text-sm text-muted-foreground">
+          You cleared every {meta.unit.toLowerCase().replace(/s$/, "")} in this lesson. Try beating your score.
+        </p>
+      ) : (
+        <ul className="mt-3 space-y-3">
+          {missed.map(({ r, q, i }) => (
+            <li key={i} className="rounded-2xl border border-border bg-background/60 p-4 text-sm">
+              <p className="font-medium">
+                <span className="mr-1.5 text-muted-foreground">Q{i + 1}.</span>
+                {q.question}
+              </p>
+              <p className="mt-2 text-rose-600 dark:text-rose-400">
+                {r.answer === null ? "You ran out of time" : `Your answer: ${q.options[r.answer]}`}
+              </p>
+              <p className="text-emerald-600 dark:text-emerald-400">Correct: {q.options[r.correctIndex]}</p>
+              {r.explanation && <p className="mt-1.5 text-muted-foreground">{r.explanation}</p>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
 
-            <AnimatePresence>
-              {current && !current.correct && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className={cn("text-sm", t.muted)}>
-                      <span className={cn("font-semibold", t.wrongLabel)}>
-                        {current.answer === null ? "Out of time — " : "Not quite — "}
-                      </span>
-                      {current.explanation}
-                    </p>
-                    <Button size="sm" variant="gradient" className="shrink-0" onClick={() => void game.next()}>
-                      Continue
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </AnimatePresence>
+function LifelineButton({
+  label,
+  keycap,
+  count,
+  disabled,
+  onClick,
+  cls,
+  keyCls,
+  icon,
+}: {
+  label: string;
+  keycap: string;
+  count: number;
+  disabled: boolean;
+  onClick: () => void;
+  cls: string;
+  keyCls: string;
+  icon?: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40",
+        cls,
+      )}
+    >
+      {icon}
+      {label}
+      <span className="rounded bg-amber-400/90 px-1.5 text-[11px] font-bold text-amber-950">×{count}</span>
+      <span className={cn("hidden rounded px-1 text-[10px] sm:inline", keyCls)}>{keycap}</span>
+    </button>
+  );
+}
+
+/** A radial pop of sparks from the middle of the scene on a correct answer. */
+function Burst({ big }: { big: boolean }) {
+  const sparks = useMemo(() => {
+    const n = big ? 34 : 18;
+    return Array.from({ length: n }, (_, i) => {
+      const angle = (i / n) * Math.PI * 2 + (i % 3) * 0.2;
+      const dist = (big ? 190 : 120) + (i % 5) * 18;
+      return {
+        x: Math.cos(angle) * dist,
+        y: Math.sin(angle) * dist * 0.7,
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        size: 5 + (i % 3) * 2,
+      };
+    });
+  }, [big]);
+  return (
+    <div className="pointer-events-none absolute left-1/2 top-[42%] z-10 h-0 w-0" aria-hidden>
+      {sparks.map((p, i) => (
+        <motion.span
+          key={i}
+          className="absolute block rounded-full"
+          style={{
+            width: p.size,
+            height: p.size,
+            backgroundColor: p.color,
+            boxShadow: `0 0 10px ${p.color}`,
+          }}
+          initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+          animate={{ x: p.x, y: p.y + 30, opacity: 0, scale: 0.3 }}
+          transition={{ duration: big ? 1.1 : 0.8, ease: "easeOut" }}
+        />
+      ))}
     </div>
   );
 }
@@ -333,15 +593,15 @@ function Overlay({ children, tone }: { children: ReactNode; tone: GameTone }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className={cn("absolute inset-0 grid place-items-center p-4 backdrop-blur-[2px]", t.backdrop)}
+      className={cn("absolute inset-0 flex overflow-y-auto p-4 backdrop-blur-[2px]", t.backdrop)}
     >
       <motion.div
         initial={{ y: 16, scale: 0.96 }}
         animate={{ y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 220, damping: 22 }}
         className={cn(
-          "relative w-full max-w-lg overflow-hidden rounded-2xl border p-6 text-center shadow-float backdrop-blur-xl sm:p-8",
-          t.panel
+          "relative m-auto w-full max-w-lg overflow-hidden rounded-2xl border p-6 text-center shadow-float backdrop-blur-xl sm:p-8",
+          t.panel,
         )}
       >
         {children}
@@ -371,7 +631,7 @@ function Confetti() {
         color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
         w: 6 + (i % 3) * 2,
       })),
-    []
+    [],
   );
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>

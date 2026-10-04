@@ -99,6 +99,9 @@ export const submitQuizAttempt = (presentationId: string, answers: number[]) =>
 /** Game mode: grade a single question (answer `null` = the timer ran out). */
 export const checkPlayAnswer = (presentationId: string, questionIndex: number, answer: number | null) =>
   apiPost<PlayAnswerResult>("/review/play-answer", { presentationId, questionIndex, answer });
+/** Game mode 50/50 lifeline: two wrong option indices to cross out. */
+export const getPlayHint = (presentationId: string, questionIndex: number) =>
+  apiPost<{ eliminate: number[] }>("/review/play-hint", { presentationId, questionIndex });
 
 // ── AI Tutor ────────────────────────────────────────────────────────────────
 export interface TutorTurn {

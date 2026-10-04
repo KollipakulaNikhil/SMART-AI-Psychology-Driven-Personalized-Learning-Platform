@@ -12,12 +12,12 @@ import { logHistory } from "../services/history.service";
 export const submitQuizSchema = z.object({
   presentationId: z.string().refine(Types.ObjectId.isValid, "Invalid lesson id"),
   /** Chosen option index per quiz question, in order. */
-  answers: z.array(z.number().int().min(0).max(3)).min(1).max(10),
+  answers: z.array(z.number().int().min(0).max(3)).min(1).max(30),
 });
 
 export const playAnswerSchema = z.object({
   presentationId: z.string().refine(Types.ObjectId.isValid, "Invalid lesson id"),
-  questionIndex: z.number().int().min(0).max(9),
+  questionIndex: z.number().int().min(0).max(29),
   /** Chosen option, or null when the round timer ran out. */
   answer: z.number().int().min(0).max(3).nullable(),
 });

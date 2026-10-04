@@ -151,8 +151,6 @@ export function deriveGenerationParams(
   if (detailLevel === "detailed") scriptWordsPerSlide = Math.round(scriptWordsPerSlide * 1.2);
   if (detailLevel === "quick") scriptWordsPerSlide = Math.round(scriptWordsPerSlide * 0.8);
 
-  const quizCount = traits.revisionFrequency === "high" ? 5 : traits.revisionFrequency === "medium" ? 4 : 3;
-
   const ttsSpeed = traits.pace === "slow" ? 0.9 : traits.pace === "fast" ? 1.1 : 1.0;
 
   // A chosen duration overrides the profile-derived length: spoken narration
@@ -172,6 +170,11 @@ export function deriveGenerationParams(
     const minWordsPerSlide = Math.round(scriptWordsPerSlide * 0.85);
     durationLine = `The learner chose a ${durationMin}-minute lesson, so length is a CONTRACT: produce all ${slideCount} slides, and every slide's "script" must be AT LEAST ${minWordsPerSlide} words (target ~${scriptWordsPerSlide}), for ~${targetTotalWords} spoken words total. Do NOT cut the lesson short or merge slides — under-writing is the #1 failure. When unsure, add another example or a deeper "why", never less.`;
   }
+
+  // The quiz also powers the game, so it scales with the lesson: ~2 questions
+  // per slide (more for frequent revisers) so every slide is covered, 8-24 total.
+  const questionsPerSlide = traits.revisionFrequency === "high" ? 2.5 : traits.revisionFrequency === "medium" ? 2 : 1.5;
+  const quizCount = Math.min(24, Math.max(8, Math.round(slideCount * questionsPerSlide)));
 
   const imageEmphasis =
     traits.learningStyle === "visual" || traits.visualPreference === "high"

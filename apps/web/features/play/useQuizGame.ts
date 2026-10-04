@@ -4,10 +4,24 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { animate, useMotionValue, useMotionValueEvent, useReducedMotion, type MotionValue } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { checkPlayAnswer, submitQuizAttempt } from "@/services/lessons.service";
+import { checkPlayAnswer, getPlayHint, submitQuizAttempt } from "@/services/lessons.service";
 import { toErrorMessage } from "@/services/api";
 import type { PresentationDetail, QuizAttemptResult, QuizQuestion } from "@/lib/types";
-import { TRANSITION_SEC, comboMultiplier, playTone, pointsFor, roundSecondsFor, type ToneKind } from "./engine";
+import {
+  SHIELD_STREAK,
+  STAGE_SIZE,
+  TIME_WARP_SEC,
+  TRANSITION_SEC,
+  comboMultiplier,
+  isBossRound,
+  playTone,
+  pointsFor,
+  roundSecondsFor,
+  stageCount,
+  stageOf,
+  starsFor,
+  type ToneKind,
+} from "./engine";
 
 export type Phase = "intro" | "question" | "revealed" | "walking" | "summit";
 
@@ -17,6 +31,17 @@ export interface RoundResult {
   correctIndex: number;
   explanation: string;
   points: number;
+  /** Boss rounds are worth double. */
+  boss: boolean;
+  /** A shield absorbed this miss, so the combo survived. */
+  shielded: boolean;
+}
+
+export interface Lifelines {
+  /** 50/50: crosses out two wrong options. */
+  fifty: number;
+  /** Time Warp: +10 seconds on the open question. */
+  warp: number;
 }
 
 export interface Floater {
@@ -48,6 +73,22 @@ export interface QuizGame {
   floaters: Floater[];
   muted: boolean;
   attempt: QuizAttemptResult | null;
+  lifelines: Lifelines;
+  shields: number;
+  /** Option indices crossed out by 50/50 on the open question. */
+  eliminated: number[];
+  hinting: boolean;
+  /** The open question is a boss round (double points). */
+  boss: boolean;
+  stage: number;
+  stages: number;
+  /** Stars per finished stage, from accuracy. */
+  stageStars: number[];
+  /** Best score on this lesson before this run, and whether this run beat it. */
+  best: number;
+  newBest: boolean;
+  castFifty: () => Promise<void>;
+  castWarp: () => void;
   /** Increments on every (re)start so scenes can reset their cursors. */
   runId: number;
   /** 0 → 1 as questions are answered; animated during transitions. */
@@ -66,6 +107,9 @@ export interface QuizGame {
 }
 
 const KEYS = ["1", "2", "3", "4"];
+const START_LIFELINES: Lifelines = { fifty: 1, warp: 1 };
+const MAX_SHIELDS = 2;
+const bestKey = (lessonId: string) => `smartai.play.best.${lessonId}`;
 
 /**
  * The game loop shared by every scene: round timer, per-question server
@@ -91,6 +135,14 @@ export function useQuizGame(lesson: PresentationDetail): QuizGame {
   const [attempt, setAttempt] = useState<QuizAttemptResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [runId, setRunId] = useState(0);
+  const [lifelines, setLifelines] = useState<Lifelines>(START_LIFELINES);
+  const [shields, setShields] = useState(0);
+  const [eliminated, setEliminated] = useState<number[]>([]);
+  const [hinting, setHinting] = useState(false);
+  const [best, setBest] = useState(0);
+  const [newBest, setNewBest] = useState(false);
+  /** Extra seconds from Time Warp on the open question. */
+  const bonusRef = useRef(0);
 
   const score = useMemo(() => results.reduce((sum, r) => sum + r.points, 0), [results]);
   const correctCount = useMemo(() => results.filter((r) => r.correct).length, [results]);
@@ -120,13 +172,20 @@ export function useQuizGame(lesson: PresentationDetail): QuizGame {
       const remaining = Math.max(0, timeLeft.get());
       try {
         const graded = await checkPlayAnswer(lesson.id, index, choice);
-        const nextCombo = graded.correct ? combo + 1 : 0;
-        const points = graded.correct ? pointsFor(remaining, roundSec, nextCombo) : 0;
-        setResults((prev) => [...prev, { answer: choice, ...graded, points }]);
+        const boss = isBossRound(index, total);
+        const shielded = !graded.correct && shields > 0;
+        const nextCombo = graded.correct ? combo + 1 : shielded ? combo : 0;
+        const points = graded.correct ? pointsFor(remaining, roundSec + bonusRef.current, nextCombo, boss) : 0;
+        setResults((prev) => [...prev, { answer: choice, ...graded, points, boss, shielded }]);
         setCombo(nextCombo);
         setBestCombo((b) => Math.max(b, nextCombo));
+        if (shielded) {
+          setShields((n) => n - 1);
+        } else if (graded.correct && nextCombo % SHIELD_STREAK === 0) {
+          setShields((n) => Math.min(MAX_SHIELDS, n + 1));
+        }
         setPhase("revealed");
-        sound(graded.correct ? "correct" : "wrong");
+        sound(graded.correct ? "correct" : shielded ? "shield" : "wrong");
         if (graded.correct) {
           const id = Date.now();
           const mult = comboMultiplier(nextCombo);
@@ -140,7 +199,7 @@ export function useQuizGame(lesson: PresentationDetail): QuizGame {
         setPending(null);
       }
     },
-    [phase, lesson.id, index, combo, roundSec, timeLeft, sound]
+    [phase, lesson.id, index, total, combo, shields, roundSec, timeLeft, sound],
   );
   const submitRef = useRef(submitAnswer);
   submitRef.current = submitAnswer;
@@ -149,11 +208,14 @@ export function useQuizGame(lesson: PresentationDetail): QuizGame {
   useEffect(() => {
     if (phase !== "question") return;
     answeringRef.current = false;
+    bonusRef.current = 0;
+    setEliminated([]);
+    if (isBossRound(index, total)) sound("boss");
     const startAt = performance.now();
     timeLeft.set(roundSec);
     let raf = 0;
     const tick = (now: number) => {
-      const remaining = Math.max(0, roundSec - (now - startAt) / 1000);
+      const remaining = Math.max(0, roundSec + bonusRef.current - (now - startAt) / 1000);
       timeLeft.set(remaining);
       if (remaining <= 0) {
         void submitRef.current(null);
@@ -163,7 +225,34 @@ export function useQuizGame(lesson: PresentationDetail): QuizGame {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [phase, index, roundSec, timeLeft]);
+  }, [phase, index, total, roundSec, timeLeft, sound]);
+
+  // ── Lifelines ────────────────────────────────────────────────────────────
+  const castFifty = useCallback(async () => {
+    if (phase !== "question" || lifelines.fifty < 1 || eliminated.length > 0 || hinting || answeringRef.current) return;
+    setHinting(true);
+    try {
+      const { eliminate } = await getPlayHint(lesson.id, index);
+      setEliminated(eliminate);
+      setLifelines((l) => ({ ...l, fifty: l.fifty - 1 }));
+      sound("lifeline");
+    } catch (error) {
+      toast.error(toErrorMessage(error));
+    } finally {
+      setHinting(false);
+    }
+  }, [phase, lifelines.fifty, eliminated.length, hinting, lesson.id, index, sound]);
+
+  const castWarp = useCallback(() => {
+    if (phase !== "question" || lifelines.warp < 1 || bonusRef.current > 0 || answeringRef.current) return;
+    bonusRef.current += TIME_WARP_SEC;
+    setLifelines((l) => ({ ...l, warp: l.warp - 1 }));
+    sound("lifeline");
+  }, [phase, lifelines.warp, sound]);
+  const fiftyRef = useRef(castFifty);
+  fiftyRef.current = castFifty;
+  const warpRef = useRef(castWarp);
+  warpRef.current = castWarp;
 
   // ── Moving on to the next question ───────────────────────────────────────
   const next = useCallback(async () => {
@@ -181,10 +270,18 @@ export function useQuizGame(lesson: PresentationDetail): QuizGame {
       setPhase("summit");
       sound("summit");
     } else {
+      // Clearing a stage with 80%+ refuels a lifeline.
+      if (to % STAGE_SIZE === 0) {
+        const stageResults = results.slice(to - STAGE_SIZE, to);
+        if (starsFor(stageResults.filter((r) => r.correct).length, stageResults.length) === 3) {
+          setLifelines((l) => (stageOf(from) % 2 === 0 ? { ...l, fifty: l.fifty + 1 } : { ...l, warp: l.warp + 1 }));
+          sound("stage");
+        }
+      }
       setIndex(to);
       setPhase("question");
     }
-  }, [phase, index, total, reduceMotion, progress, sound]);
+  }, [phase, index, total, results, reduceMotion, progress, sound]);
 
   // A correct answer moves on by itself; a miss waits so the explanation is read.
   useEffect(() => {
@@ -201,18 +298,42 @@ export function useQuizGame(lesson: PresentationDetail): QuizGame {
     setCombo(0);
     setBestCombo(0);
     setAttempt(null);
+    setLifelines(START_LIFELINES);
+    setShields(0);
+    setEliminated([]);
+    setNewBest(false);
     progress.set(0);
     setRunId((r) => r + 1);
     setPhase("question");
   }, [progress]);
 
+  // ── Personal best (per lesson, kept in this browser) ────────────────────
+  useEffect(() => {
+    try {
+      setBest(Number(localStorage.getItem(bestKey(lesson.id))) || 0);
+    } catch {
+      /* storage may be unavailable */
+    }
+  }, [lesson.id]);
+  useEffect(() => {
+    if (phase !== "summit") return;
+    setNewBest(score > best);
+    if (score > best) {
+      try {
+        localStorage.setItem(bestKey(lesson.id), String(score));
+      } catch {
+        /* ignore */
+      }
+    }
+    // Evaluated once per finished run: `best` holds the pre-run value until then.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
   // ── Finish: record the whole run through the real grader (SM-2 + streak) ─
   useEffect(() => {
     if (phase !== "summit" || attempt || submitting || results.length !== total) return;
     setSubmitting(true);
-    const answers = results.map((r, i) =>
-      r.answer ?? (r.correctIndex + 1) % Math.max(2, questions[i].options.length)
-    );
+    const answers = results.map((r, i) => r.answer ?? (r.correctIndex + 1) % Math.max(2, questions[i].options.length));
     submitQuizAttempt(lesson.id, answers)
       .then((res) => {
         setAttempt(res);
@@ -232,7 +353,11 @@ export function useQuizGame(lesson: PresentationDetail): QuizGame {
         const k = KEYS.indexOf(e.key);
         if (k >= 0 && k < (questions[index]?.options.length ?? 0)) {
           e.preventDefault();
-          void submitAnswer(k);
+          if (!eliminated.includes(k)) void submitAnswer(k);
+        } else if (e.key.toLowerCase() === "f") {
+          void fiftyRef.current();
+        } else if (e.key.toLowerCase() === "t") {
+          warpRef.current();
         }
       } else if (e.key === "Enter" || e.key === " ") {
         if (phase === "intro" || phase === "summit") {
@@ -246,12 +371,22 @@ export function useQuizGame(lesson: PresentationDetail): QuizGame {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [phase, index, questions, results, submitAnswer, start, next]);
+  }, [phase, index, questions, results, eliminated, submitAnswer, start, next]);
 
   const setMuted = useCallback((update: (m: boolean) => boolean) => setMutedState(update), []);
 
+  const stageStars = useMemo(() => {
+    const out: number[] = [];
+    for (let s = 0; s < stageCount(total); s++) {
+      const slice = results.slice(s * STAGE_SIZE, (s + 1) * STAGE_SIZE);
+      const size = Math.min(STAGE_SIZE, total - s * STAGE_SIZE);
+      if (slice.length === size) out.push(starsFor(slice.filter((r) => r.correct).length, size));
+    }
+    return out;
+  }, [results, total]);
+
   const question = questions[index];
-  const current = phase === "revealed" ? results[results.length - 1] ?? null : null;
+  const current = phase === "revealed" ? (results[results.length - 1] ?? null) : null;
 
   return {
     lesson,
@@ -270,6 +405,18 @@ export function useQuizGame(lesson: PresentationDetail): QuizGame {
     floaters,
     muted,
     attempt,
+    lifelines,
+    shields,
+    eliminated,
+    hinting,
+    boss: isBossRound(index, total),
+    stage: stageOf(index),
+    stages: stageCount(total),
+    stageStars,
+    best,
+    newBest,
+    castFifty,
+    castWarp,
     runId,
     progress,
     timeLeft,

@@ -44,8 +44,8 @@ export const generatedContentSchema = z.object({
         explanation: z.string().min(5).max(500),
       })
     )
-    .min(2)
-    .max(6),
+    .min(5)
+    .max(28),
 });
 
 export type GeneratedContent = z.infer<typeof generatedContentSchema>;
@@ -116,7 +116,7 @@ ${params.narrationStyle}
 11. ${params.structureRule}
 12. ${params.encouragement}
 13. Each slide's "imagePrompt" is a 2–6 word ENGLISH stock-photo search query for a real photograph illustrating the slide (e.g. "neuron microscope closeup"). Real photographic subjects only — never text, charts or abstract art.
-14. Include EXACTLY ${params.quizCount} quiz questions on the core ideas, each with exactly 4 options and one correct answer, at a ${traits.knowledgeLevel} difficulty.
+14. Include EXACTLY ${params.quizCount} quiz questions, each with exactly 4 options and one correct answer. They also power a timed game, so make them genuinely challenging, not trivia: COVER EVERY SLIDE (at least one question per slide, none repeated), mix recall, "why/how" reasoning, applied scenarios ("what happens if..."), and spot-the-misconception questions, and ramp difficulty from ${traits.knowledgeLevel}-level warm-ups up to hard multi-step ones. Make wrong options plausible (common mistakes), vary which index is correct, and keep every question answerable from the lesson content. Each explanation says why the answer is right and why the tempting wrong one is not.
 15. "subject" is the broad category (e.g. "Physics", "Programming", "History"). "summary" is a ${traits.attentionSpan === "low" ? "3-sentence" : "short-paragraph"} recap in the narrator's spoken voice.
 16. Every field must contain real, specific content. NEVER output an empty string or copy the angle-bracket hints below — they describe what belongs there, they are not literal values.
 17. ACCURACY OUTRANKS EVERY OTHER RULE HERE. Definitions, formulas, figures, units, dates and quiz answers must be factually correct and match the standard treatment of the subject — the learner will memorise whatever you write, so a confident wrong statement does real damage. If you are unsure of a specific number or statistic, describe the relationship qualitatively instead of inventing a value, and never invent sources, citations or named studies.

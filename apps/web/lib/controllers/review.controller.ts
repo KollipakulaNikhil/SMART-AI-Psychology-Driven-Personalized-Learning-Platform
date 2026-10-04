@@ -12,12 +12,12 @@ import type { UserDocument } from "@smart-ai/core/models/User";
 export const submitQuizSchema = z.object({
   presentationId: z.string().refine(Types.ObjectId.isValid, "Invalid lesson id"),
   /** Chosen option index per quiz question, in order. */
-  answers: z.array(z.number().int().min(0).max(3)).min(1).max(10),
+  answers: z.array(z.number().int().min(0).max(3)).min(1).max(30),
 });
 
 export const playAnswerSchema = z.object({
   presentationId: z.string().refine(Types.ObjectId.isValid, "Invalid lesson id"),
-  questionIndex: z.number().int().min(0).max(9),
+  questionIndex: z.number().int().min(0).max(29),
   /** Chosen option, or null when the round timer ran out. */
   answer: z.number().int().min(0).max(3).nullable(),
 });
@@ -42,6 +42,33 @@ export async function checkPlayAnswer(user: UserDocument, body: z.infer<typeof p
     correctIndex: question.correctIndex,
     explanation: question.explanation,
   };
+}
+
+export const playHintSchema = z.object({
+  presentationId: z.string().refine(Types.ObjectId.isValid, "Invalid lesson id"),
+  questionIndex: z.number().int().min(0).max(29),
+});
+
+/**
+ * 50/50 lifeline: names two WRONG options to cross out. Never reveals the
+ * correct index — the answer is still only graded by `checkPlayAnswer`.
+ */
+export async function playHint(user: UserDocument, body: z.infer<typeof playHintSchema>) {
+  const { presentationId, questionIndex } = body;
+  const presentation = await Presentation.findById(presentationId).select("userId quiz").lean();
+  if (!presentation) throw ApiError.notFound("Lesson not found");
+  if (String(presentation.userId) !== String(user._id)) throw ApiError.forbidden();
+
+  const question = presentation.quiz[questionIndex];
+  if (!question) throw ApiError.badRequest("No such question");
+
+  const wrong = question.options.map((_, i) => i).filter((i) => i !== question.correctIndex);
+  // Fisher-Yates so the crossed-out pair isn't always the first two wrong options.
+  for (let i = wrong.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [wrong[i], wrong[j]] = [wrong[j], wrong[i]];
+  }
+  return { eliminate: wrong.slice(0, 2).sort((a, b) => a - b) };
 }
 
 /** Lessons due (or overdue) for a Smart Review, most overdue first. */

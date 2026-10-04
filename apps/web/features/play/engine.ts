@@ -65,18 +65,36 @@ export function roundSecondsFor(attention: AttentionSpan): number {
   return attention === "low" ? 15 : attention === "high" ? 25 : 20;
 }
 
+/** Questions per stage; the last question of each stage (and of the quiz) is a boss round. */
+export const STAGE_SIZE = 5;
+export const BOSS_MULTIPLIER = 2;
+/** Seconds the Time Warp lifeline adds to the open round. */
+export const TIME_WARP_SEC = 10;
+/** Correct answers in a row that earn a shield (absorbs one miss, keeps the combo). */
+export const SHIELD_STREAK = 4;
+
+export const stageOf = (index: number) => Math.floor(index / STAGE_SIZE);
+export const stageCount = (total: number) => Math.ceil(total / STAGE_SIZE);
+export const isBossRound = (index: number, total: number) => (index + 1) % STAGE_SIZE === 0 || index === total - 1;
+
+/** Stars for a stage from its accuracy: 3 ≥ 80%, 2 ≥ 60%, 1 ≥ 30%. */
+export function starsFor(correct: number, count: number): number {
+  const r = count === 0 ? 0 : correct / count;
+  return r >= 0.8 ? 3 : r >= 0.6 ? 2 : r >= 0.3 ? 1 : 0;
+}
+
 export function comboMultiplier(combo: number): number {
   return combo >= 5 ? 2 : combo >= 3 ? 1.5 : 1;
 }
 
-export function pointsFor(timeLeftSec: number, roundSec: number, combo: number): number {
-  const bonus = Math.round((TIME_BONUS_MAX * timeLeftSec) / roundSec);
-  return Math.round((BASE_POINTS + bonus) * comboMultiplier(combo));
+export function pointsFor(timeLeftSec: number, roundSec: number, combo: number, boss = false): number {
+  const bonus = Math.round(TIME_BONUS_MAX * Math.min(1, timeLeftSec / roundSec));
+  return Math.round((BASE_POINTS + bonus) * comboMultiplier(combo) * (boss ? BOSS_MULTIPLIER : 1));
 }
 
 // ── Sound (tiny synthesized cues; no assets, no network) ────────────────────
 
-export type ToneKind = "correct" | "wrong" | "step" | "summit";
+export type ToneKind = "correct" | "wrong" | "step" | "summit" | "lifeline" | "boss" | "shield" | "stage";
 
 let audioCtx: AudioContext | null = null;
 
@@ -108,6 +126,21 @@ export function playTone(kind: ToneKind) {
         break;
       case "step":
         beep(audioCtx, 520, t, 0.05, 0.03);
+        break;
+      case "lifeline":
+        beep(audioCtx, 880, t, 0.08, 0.06, "square");
+        beep(audioCtx, 1320, t + 0.07, 0.14, 0.05, "square");
+        break;
+      case "shield":
+        beep(audioCtx, 392, t, 0.1, 0.07, "triangle");
+        beep(audioCtx, 587, t + 0.08, 0.2, 0.07, "triangle");
+        break;
+      case "boss":
+        beep(audioCtx, 110, t, 0.35, 0.09, "sawtooth");
+        beep(audioCtx, 165, t + 0.18, 0.4, 0.07, "sawtooth");
+        break;
+      case "stage":
+        [440, 554, 659].forEach((f, i) => beep(audioCtx!, f, t + i * 0.09, 0.22, 0.06));
         break;
       case "summit":
         [523, 659, 784, 1047].forEach((f, i) => beep(audioCtx!, f, t + i * 0.11, 0.3, 0.07));
