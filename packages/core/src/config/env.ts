@@ -65,6 +65,31 @@ const envSchema = z
     FFPROBE_PATH: z.string().optional().default(""),
     BACKGROUND_MUSIC_PATH: z.string().optional().default(""),
 
+    // ── AI-animated lesson video (Wan 2.2, open weights) — worker-only ────────
+    // Empty = keep rendering the classic board video. "comfyui" talks to a
+    // ComfyUI server that has the Wan 2.2 models installed (your own GPU box,
+    // a rented one, or a tunnel to Colab/Kaggle); "replicate" runs the same
+    // open weights on Replicate's hosted GPUs.
+    WAN_PROVIDER: z.enum(["", "comfyui", "replicate"]).default(""),
+    WAN_COMFYUI_URL: z.string().default("http://127.0.0.1:8188"),
+    // Optional API-format workflow JSON to use instead of the built-in
+    // Wan 2.2 TI2V-5B graph. Placeholders: %PROMPT% %NEGATIVE% and "%SEED%".
+    WAN_COMFYUI_WORKFLOW_PATH: z.string().optional().default(""),
+    WAN_WIDTH: z.coerce.number().int().positive().default(1280),
+    WAN_HEIGHT: z.coerce.number().int().positive().default(704),
+    WAN_FRAMES: z.coerce.number().int().positive().default(121),
+    WAN_FPS: z.coerce.number().int().positive().default(24),
+    WAN_STEPS: z.coerce.number().int().positive().default(20),
+    REPLICATE_API_TOKEN: z.string().optional().default(""),
+    WAN_REPLICATE_MODEL: z.string().default("wan-video/wan-2.2-t2v-fast"),
+    // Extra model inputs as a JSON object, merged over { prompt } — input
+    // names differ between Replicate's Wan models, so they are not hardcoded.
+    WAN_REPLICATE_INPUT: z.string().optional().default(""),
+    // Each clip is ~5s of GPU work; these cap what one lesson can spend.
+    WAN_MAX_CLIPS_PER_SLIDE: z.coerce.number().int().positive().default(2),
+    WAN_MAX_CLIPS_PER_LESSON: z.coerce.number().int().positive().default(12),
+    WAN_CLIP_TIMEOUT_MIN: z.coerce.number().positive().default(20),
+
     RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().positive().default(15),
     RATE_LIMIT_MAX: z.coerce.number().positive().default(300),
     GENERATION_RATE_LIMIT_MAX: z.coerce.number().positive().default(30),

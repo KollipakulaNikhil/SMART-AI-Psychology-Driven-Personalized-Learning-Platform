@@ -92,7 +92,7 @@ export function TutorChat({ lessonId, currentSlideIndex, currentSlideTitle, inje
       <CardContent className="flex min-h-0 flex-1 flex-col gap-3 pt-0">
         <div ref={scrollRef} className="scrollbar-thin min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
           {messages.length === 0 && (
-            <p className="rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground">
+            <p className="rounded-md bg-elevated p-3 text-sm text-muted-foreground">
               Stuck on something? I know exactly where you are in the video — just ask, or tap a
               shortcut below.
             </p>
@@ -103,7 +103,7 @@ export function TutorChat({ lessonId, currentSlideIndex, currentSlideTitle, inje
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               className={cn(
-                "max-w-[92%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm",
+                "max-w-[92%] whitespace-pre-wrap rounded-lg px-3.5 py-2.5 text-sm",
                 turn.role === "user"
                   ? "ml-auto rounded-br-md bg-primary/20 text-foreground"
                   : "mr-auto rounded-bl-md bg-muted/60"
@@ -113,11 +113,11 @@ export function TutorChat({ lessonId, currentSlideIndex, currentSlideTitle, inje
             </motion.div>
           ))}
           {pending && (
-            <div className="mr-auto flex items-center gap-2 rounded-2xl rounded-bl-md bg-muted/60 px-3.5 py-2.5 text-sm text-muted-foreground">
+            <div className="mr-auto flex items-center gap-2 rounded-lg rounded-bl-md bg-muted/60 px-3.5 py-2.5 text-sm text-muted-foreground">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> thinking…
             </div>
           )}
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
 
         <div className="flex flex-wrap gap-1.5">
@@ -127,7 +127,7 @@ export function TutorChat({ lessonId, currentSlideIndex, currentSlideTitle, inje
               type="button"
               disabled={pending}
               onClick={() => send(action)}
-              className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-secondary/60 hover:text-foreground disabled:opacity-50"
+              className="min-h-11 rounded-sm border border-input px-3 text-left text-xs text-foreground transition-colors hover:border-foreground disabled:opacity-50"
             >
               {action}
             </button>
@@ -146,12 +146,12 @@ export function TutorChat({ lessonId, currentSlideIndex, currentSlideTitle, inje
             onChange={(event) => setInput(event.target.value)}
             placeholder="Ask anything about this lesson…"
             disabled={pending}
-            className="h-10 flex-1 rounded-xl border border-input bg-background/60 px-3.5 text-sm placeholder:text-muted-foreground focus-visible:border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            className="h-10 flex-1 rounded-md border border-input bg-background/60 px-3.5 text-sm placeholder:text-muted-foreground focus-visible:border-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={pending || !input.trim()}
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-secondary text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+            className="flex h-10 w-10 items-center justify-center rounded-md bg-foreground text-background transition-opacity hover:opacity-90 disabled:opacity-40"
             aria-label="Send"
           >
             <Send className="h-4 w-4" />

@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Captions, FileText, Languages, PenLine, Sparkles, Upload, X } from "lucide-react";
+import { Captions, FileText, Languages, PenLine, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -154,7 +154,7 @@ export function GenerateForm({
       <CardContent>
         <form
           onSubmit={handleSubmit((values) => onGenerate(values, sourceFile ?? undefined))}
-          className="space-y-5"
+          className="space-y-7"
           noValidate
         >
           <div className="space-y-1.5">
@@ -165,7 +165,7 @@ export function GenerateForm({
               disabled={disabled}
               {...register("topic")}
             />
-            {errors.topic && <p className="text-xs text-red-400">{errors.topic.message}</p>}
+            {errors.topic && <p className="text-xs text-destructive">{errors.topic.message}</p>}
           </div>
 
           <div className="space-y-1.5">
@@ -178,7 +178,7 @@ export function GenerateForm({
               disabled={disabled}
               {...register("focus")}
             />
-            {errors.focus && <p className="text-xs text-red-400">{errors.focus.message}</p>}
+            {errors.focus && <p className="text-xs text-destructive">{errors.focus.message}</p>}
           </div>
 
           <div className="space-y-1.5">
@@ -198,13 +198,13 @@ export function GenerateForm({
                 type="button"
                 disabled={disabled}
                 onClick={() => fileInputRef.current?.click()}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-4 text-sm text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-50"
+                className="flex min-h-14 w-full items-center justify-center gap-2 rounded-md border border-dashed border-input px-3 py-4 text-sm text-muted-foreground transition-colors hover:border-foreground hover:text-foreground disabled:opacity-50"
               >
                 <Upload className="h-4 w-4" /> Attach a PDF (textbook chapter, notes, article) — up to{" "}
                 {MAX_PDF_MB}MB
               </button>
             ) : (
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
+              <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
                 <div className="flex min-w-0 items-center gap-2">
                   <FileText className="h-5 w-5 shrink-0 text-primary" />
                   <span className="truncate text-sm font-medium">{sourceFile.name}</span>
@@ -216,7 +216,8 @@ export function GenerateForm({
                   type="button"
                   disabled={disabled}
                   onClick={clearFile}
-                  className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                  aria-label="Remove PDF"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -243,10 +244,10 @@ export function GenerateForm({
                   onClick={() => setValue("language", choice.code)}
                   title={choice.label}
                   className={cn(
-                    "rounded-full border px-4 py-1.5 text-sm transition-colors disabled:opacity-50",
+                    "min-h-11 rounded-md border px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-50",
                     language === choice.code
-                      ? "border-primary bg-primary/15 text-primary"
-                      : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-input text-foreground hover:border-foreground"
                   )}
                 >
                   {choice.nativeLabel}
@@ -276,10 +277,10 @@ export function GenerateForm({
                     disabled={disabled}
                     onClick={() => setValue("boardLanguage", choice.code)}
                     className={cn(
-                      "rounded-full border px-4 py-1.5 text-sm transition-colors disabled:opacity-50",
+                      "min-h-11 rounded-md border px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-50",
                       boardLanguage === choice.code
-                        ? "border-primary bg-primary/15 text-primary"
-                        : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                        ? "border-foreground bg-foreground text-background"
+                        : "border-input text-foreground hover:border-foreground"
                     )}
                   >
                     {choice.label}
@@ -305,10 +306,10 @@ export function GenerateForm({
                   disabled={disabled}
                   onClick={() => setValue("durationMin", choice.value)}
                   className={cn(
-                    "rounded-full border px-4 py-1.5 text-sm transition-colors disabled:opacity-50",
+                    "min-h-11 rounded-md border px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-50",
                     durationMin === choice.value
-                      ? "border-primary bg-primary/15 text-primary"
-                      : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-input text-foreground hover:border-foreground"
                   )}
                 >
                   {choice.label}
@@ -332,10 +333,10 @@ export function GenerateForm({
                   onClick={() => setValue("detailLevel", choice.value)}
                   title={choice.hint}
                   className={cn(
-                    "rounded-full border px-4 py-1.5 text-sm transition-colors disabled:opacity-50",
+                    "min-h-11 rounded-md border px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-50",
                     detailLevel === choice.value
-                      ? "border-secondary bg-secondary/15 text-secondary"
-                      : "border-border text-muted-foreground hover:border-secondary/50 hover:text-foreground"
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-input text-foreground hover:border-foreground"
                   )}
                 >
                   {choice.label}
@@ -352,8 +353,8 @@ export function GenerateForm({
             disabled={disabled}
             onClick={() => setValue("subtitles", !subtitles)}
             className={cn(
-              "flex w-full items-center justify-between rounded-xl border p-3.5 text-left transition-colors disabled:opacity-50",
-              subtitles ? "border-accent/60 bg-accent/10" : "border-border hover:border-accent/40"
+              "flex w-full items-center justify-between rounded-md border p-3.5 text-left transition-colors disabled:opacity-50",
+              subtitles ? "border-foreground bg-card" : "border-input hover:border-foreground"
             )}
             role="switch"
             aria-checked={subtitles}
@@ -369,15 +370,15 @@ export function GenerateForm({
             </span>
             <span
               className={cn(
-                "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-                subtitles ? "bg-accent" : "bg-muted"
+                "relative h-6 w-11 shrink-0 rounded-full border border-foreground transition-colors",
+                subtitles ? "bg-accent" : "bg-transparent"
               )}
               aria-hidden
             >
               <span
                 className={cn(
-                  "absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all",
-                  subtitles ? "left-[22px]" : "left-0.5"
+                  "absolute top-[3px] h-4 w-4 rounded-full transition-all",
+                  subtitles ? "left-[22px] bg-accent-foreground" : "left-[3px] bg-foreground"
                 )}
               />
             </span>
@@ -385,7 +386,7 @@ export function GenerateForm({
 
           {recentTopics && recentTopics.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">Pick up where you left off:</p>
+              <p className="label-mono">Pick up where you left off</p>
               <div className="flex flex-wrap gap-2">
                 {recentTopics.slice(0, 6).map((recent) => (
                   <button
@@ -395,7 +396,7 @@ export function GenerateForm({
                     onClick={() => setValue("topic", recent.topic, { shouldValidate: true })}
                     className="disabled:opacity-50"
                   >
-                    <Badge variant="outline" className="cursor-pointer py-1 hover:border-primary hover:text-primary">
+                    <Badge variant="outline" className="cursor-pointer px-2 py-1.5 normal-case tracking-normal hover:border-foreground hover:text-foreground">
                       {recent.topic}
                     </Badge>
                   </button>
@@ -405,7 +406,7 @@ export function GenerateForm({
           )}
 
           <Button type="submit" variant="gradient" size="lg" className="w-full" disabled={disabled}>
-            <Sparkles className="h-4 w-4" /> Generate my lesson
+            <PenLine className="h-4 w-4" /> Generate my lesson
           </Button>
         </form>
       </CardContent>

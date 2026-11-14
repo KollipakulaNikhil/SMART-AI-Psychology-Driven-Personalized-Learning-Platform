@@ -1,18 +1,32 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Kalam, Space_Grotesk } from "next/font/google";
+import { Fraunces, Hanken_Grotesk, JetBrains_Mono, Kalam } from "next/font/google";
 import { Providers } from "@/context/Providers";
 import "@/styles/globals.css";
 
-const inter = Inter({
+/** Body and UI: a humane grotesque that stays out of the serif's way. */
+const hanken = Hanken_Grotesk({
   subsets: ["latin"],
   variable: "--font-sans",
   display: "swap",
 });
 
-/** Display face for headings — distinctive at large sizes without being loud. */
-const spaceGrotesk = Space_Grotesk({
+/**
+ * Display serif. Loaded as a variable font with its optical-size and softness
+ * axes so big headlines get the tight, high-contrast cut while small serif
+ * labels stay sturdy.
+ */
+const fraunces = Fraunces({
   subsets: ["latin"],
+  style: ["normal", "italic"],
+  axes: ["opsz", "SOFT"],
   variable: "--font-display",
+  display: "swap",
+});
+
+/** Labels, counters, section numbers and metadata. */
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
   display: "swap",
 });
 
@@ -31,22 +45,25 @@ const kalam = Kalam({
 
 export const metadata: Metadata = {
   title: {
-    default: "SMART AI — Learning that adapts to your mind",
+    default: "SMART AI — Lessons written for the way you learn",
     template: "%s · SMART AI",
   },
   description:
-    "SMART AI maps your learning psychology, then generates lessons — slides, narration and video — built for the way you actually learn.",
+    "SMART AI works out how you learn in a three-minute discovery, then writes each lesson for you — narrated animated video, an interactive board, quiz games and a tutor, in five languages.",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#FBFAFF",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F6F1E7" },
+    { media: "(prefers-color-scheme: dark)", color: "#161512" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${spaceGrotesk.variable} ${kalam.variable}`}
+      className={`${hanken.variable} ${fraunces.variable} ${jetbrainsMono.variable} ${kalam.variable}`}
       suppressHydrationWarning
     >
       <body className="min-h-screen font-sans">

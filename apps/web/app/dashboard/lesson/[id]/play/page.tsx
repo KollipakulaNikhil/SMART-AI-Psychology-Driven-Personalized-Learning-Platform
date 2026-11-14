@@ -16,12 +16,12 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
       <div>
         <Link
           href={`/dashboard/lesson/${id}`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="label-mono min-h-11 transition-colors hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" /> Back to lesson
         </Link>
-        <h1 className="mt-2 text-2xl font-bold sm:text-3xl">{lesson?.title || lesson?.topic || "Play"}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h1 className="page-title mt-1">{lesson?.title || lesson?.topic || "Play"}</h1>
+        <p className="mt-2.5 border-b-2 border-foreground pb-5 text-[15px] leading-relaxed text-muted-foreground">
           Play this lesson&apos;s quiz as a game — pick a world. Every run counts toward Smart Review.
         </p>
       </div>
@@ -29,7 +29,7 @@ export default function PlayPage({ params }: { params: Promise<{ id: string }> }
       {isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-64 rounded-3xl" />
+            <Skeleton key={i} className="h-64 rounded-lg" />
           ))}
         </div>
       ) : isError || !lesson ? (

@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Map, Sparkles } from "lucide-react";
+import { ArrowRight, Map } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -78,13 +78,14 @@ function GeneratePageInner() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold sm:text-3xl">Generate a lesson</h1>
-        <p className="mt-1 text-muted-foreground">
+      <div className="border-b-2 border-foreground pb-5">
+        <p className="label-mono mb-3">New lesson</p>
+        <h1 className="page-title">Generate a lesson</h1>
+        <p className="mt-2.5 text-[15px] leading-relaxed text-muted-foreground">
           Content, deck, narration and video — personalized end to end.
         </p>
         {isPathModule && (
-          <Badge variant="accent" className="mt-3 gap-1.5 px-3 py-1">
+          <Badge variant="accent" className="mt-4 gap-1.5 px-2 py-1 normal-case tracking-normal">
             <Map className="h-3.5 w-3.5" /> Learning Path module {Number(moduleIndex) + 1} — this
             lesson links back to your path
           </Badge>
@@ -109,7 +110,7 @@ function GeneratePageInner() {
             <PipelineSteps steps={steps} error={error} />
 
             {finished && sourceFile && (
-              <Card className="mt-4 border-accent/30 bg-accent/5">
+              <Card className="mt-4 border-accent/50 bg-accent/[0.06]">
                 <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-medium">Want to go deeper into this document?</p>
@@ -124,7 +125,7 @@ function GeneratePageInner() {
                     onClick={handleGoDeeper}
                     loading={createPathFromPdf.isPending}
                   >
-                    <Sparkles className="h-4 w-4" /> Build a full path
+                    <Map className="h-4 w-4" /> Build a full path
                   </Button>
                 </CardContent>
               </Card>

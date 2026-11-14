@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { BrainCircuit } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
@@ -8,24 +7,32 @@ interface LogoProps {
   iconOnly?: boolean;
 }
 
+/**
+ * The mark is a notebook page: an ink tile with a red margin rule and three
+ * ruled lines, the last cut short — a line still being written.
+ */
+export function LogoMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" className={cn("h-8 w-8", className)} aria-hidden>
+      <rect width="32" height="32" rx="5" className="fill-foreground" />
+      <path d="M10 5.5v21" stroke="hsl(var(--mark))" strokeWidth="1.75" strokeLinecap="round" />
+      <path
+        d="M14 11.5h12M14 16h12M14 20.5h6.5"
+        className="stroke-background"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function Logo({ href = "/", className, iconOnly = false }: LogoProps) {
   return (
-    <Link
-      href={href}
-      className={cn("group flex items-center gap-2.5", className)}
-      aria-label="SMART AI home"
-    >
-      <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gradient shadow-[0_8px_20px_-8px_hsl(239_84%_67%/0.9)] transition-transform duration-200 group-hover:scale-105">
-        {/* inner highlight — makes the mark read as a lit tile, not a flat swatch */}
-        <span
-          aria-hidden
-          className="absolute inset-0 rounded-xl bg-gradient-to-b from-white/25 to-transparent"
-        />
-        <BrainCircuit className="relative h-5 w-5 text-white" aria-hidden />
-      </span>
+    <Link href={href} className={cn("group flex min-h-11 items-center gap-2.5", className)} aria-label="SMART AI home">
+      <LogoMark className="transition-transform duration-150 group-hover:-rotate-3" />
       {!iconOnly && (
-        <span className="font-display text-lg font-bold tracking-tight text-foreground">
-          SMART <span className="text-gradient">AI</span>
+        <span className="font-display text-[1.3rem] font-medium leading-none tracking-tight text-foreground">
+          Smart <em className="font-normal italic text-primary">AI</em>
         </span>
       )}
     </Link>

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, Eye, EyeOff, Sparkles } from "lucide-react";
+import { AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { StudyNotesView } from "@/lib/types";
 
@@ -58,7 +58,7 @@ export function StudyNotesPanel({ notes }: StudyNotesPanelProps) {
           <span className="eyebrow">Definitions</span>
           <dl className="mt-2 space-y-2">
             {notes.definitions.map((def, i) => (
-              <div key={i} className="rounded-xl bg-muted/40 p-3">
+              <div key={i} className="rounded-md bg-elevated p-3">
                 <dt className="font-semibold text-primary">{def.term}</dt>
                 <dd className="mt-0.5 text-muted-foreground">{def.meaning}</dd>
               </div>
@@ -69,10 +69,7 @@ export function StudyNotesPanel({ notes }: StudyNotesPanelProps) {
 
       {hasKeyFacts && (
         <div>
-          <span className="eyebrow">
-            <Sparkles className="h-3.5 w-3.5" />
-            Key facts
-          </span>
+          <span className="eyebrow">Key facts</span>
           <ul className="mt-2 space-y-1.5">
             {notes.keyFacts.map((fact, i) => (
               <li key={i} className="rounded-r-lg border-l-2 border-accent/60 bg-accent/5 px-3 py-1.5 text-foreground">
@@ -84,7 +81,7 @@ export function StudyNotesPanel({ notes }: StudyNotesPanelProps) {
       )}
 
       {hasExample && notes.example && (
-        <div className="rounded-xl border border-border p-4">
+        <div className="rounded-md border border-border p-4">
           <span className="eyebrow">Worked example</span>
           <p className="mt-1.5 font-medium text-foreground">{notes.example.problem}</p>
           {notes.example.steps.length > 0 && (
@@ -98,7 +95,7 @@ export function StudyNotesPanel({ notes }: StudyNotesPanelProps) {
       )}
 
       {hasPractice && notes.practice && (
-        <div className="rounded-xl border border-border bg-secondary/5 p-4">
+        <div className="rounded-md border border-border bg-secondary/5 p-4">
           <span className="eyebrow">Practice</span>
           <p className="mt-1.5 font-medium text-foreground">{notes.practice.question}</p>
           {revealed ? (
@@ -125,10 +122,10 @@ export function StudyNotesPanel({ notes }: StudyNotesPanelProps) {
       )}
 
       {hasCommonMistake && (
-        <div className="flex gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+        <div className="flex gap-2 border-l-2 border-amber bg-amber/[0.07] p-4">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-amber" />
           <div>
-            <span className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-500">
+            <span className="font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-amber">
               Common mistake
             </span>
             <p className="mt-1 text-foreground">{notes.commonMistake}</p>

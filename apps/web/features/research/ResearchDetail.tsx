@@ -16,7 +16,7 @@ import {
   RefreshCw,
   ScrollText,
   Search,
-  Sparkles,
+  Telescope,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -60,12 +60,12 @@ function ProgressTracker({ project }: { project: ResearchProjectView }) {
               <li key={stage.key} className="flex gap-3">
                 <span
                   className={cn(
-                    "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                    "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-sm border border-transparent font-mono text-xs font-medium",
                     done
-                      ? "bg-emerald-500/20 text-emerald-400"
+                      ? "bg-accent text-accent-foreground"
                       : current
-                        ? "bg-brand-gradient text-white"
-                        : "bg-muted text-muted-foreground"
+                        ? "bg-foreground text-background"
+                        : "border-input text-muted-foreground"
                   )}
                 >
                   {done ? <Check className="h-3.5 w-3.5" /> : current ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : stagePosition}
@@ -207,7 +207,7 @@ function IdeaCard({ idea, number }: { idea: ResearchIdeaView; number: number }) 
     <Card className="h-full">
       <CardContent className="flex h-full flex-col gap-3 p-5">
         <div className="flex items-start justify-between gap-3">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-gradient text-sm font-bold text-white">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-foreground font-mono text-sm font-medium text-background">
             {number}
           </span>
           <Badge variant={feasibility.variant}>{feasibility.label}</Badge>
@@ -243,7 +243,7 @@ function IdeaCard({ idea, number }: { idea: ResearchIdeaView; number: number }) 
             <ul className="mt-1 space-y-1 text-sm">
               {idea.firstSteps.map((step, index) => (
                 <li key={index} className="flex gap-2">
-                  <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                  <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
                   <span>{step}</span>
                 </li>
               ))}
@@ -271,7 +271,7 @@ function SnapshotLightbox({ preview, onClose }: { preview: Preview | null; onClo
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 p-4"
           onClick={onClose}
           role="dialog"
           aria-modal="true"
@@ -281,7 +281,7 @@ function SnapshotLightbox({ preview, onClose }: { preview: Preview | null; onClo
             initial={{ scale: 0.96, y: 10 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.96, y: 10 }}
-            className="flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-lift"
+            className="flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-lg border border-border bg-card"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
@@ -300,8 +300,8 @@ function SnapshotLightbox({ preview, onClose }: { preview: Preview | null; onClo
                 </Button>
               </div>
             </div>
-            <div className="overflow-auto bg-muted/40 p-3">
-              <img src={preview.src} alt={`First page of ${preview.title}`} className="mx-auto w-full max-w-2xl rounded-lg shadow-soft" />
+            <div className="overflow-auto bg-elevated p-3">
+              <img src={preview.src} alt={`First page of ${preview.title}`} className="mx-auto w-full max-w-2xl rounded-lg" />
             </div>
             <p className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
               First page only, captured for preview. Open the source above to read the full document.
@@ -374,7 +374,7 @@ export function ResearchDetail({ projectId }: { projectId: string }) {
             {badge.label}
           </Badge>
         </div>
-        <h1 className="text-2xl font-bold sm:text-3xl">{project.title}</h1>
+        <h1 className="page-title">{project.title}</h1>
         <blockquote className="mt-3 max-w-3xl border-l-2 border-primary/40 pl-4 text-muted-foreground">{project.idea}</blockquote>
         {project.keywords.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -393,7 +393,7 @@ export function ResearchDetail({ projectId }: { projectId: string }) {
         <Card className="border-destructive/40 bg-destructive/5">
           <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
               <div>
                 <p className="font-medium">This brief couldn&apos;t be finished</p>
                 <p className="text-sm text-muted-foreground">{project.error ?? "An unexpected error occurred."}</p>
@@ -408,7 +408,7 @@ export function ResearchDetail({ projectId }: { projectId: string }) {
 
       {/* Overview + what was searched */}
       {analysis && (
-        <Card className="border-primary/30 bg-gradient-to-br from-primary/10 to-card">
+        <Card className="border-2 border-foreground">
           <CardContent className="p-5">
             <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-primary">
               <Compass className="h-4 w-4" /> Where your idea sits in the field
@@ -426,8 +426,8 @@ export function ResearchDetail({ projectId }: { projectId: string }) {
               key={report.name}
               title={report.note ?? undefined}
               className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5",
-                report.ok ? "border-emerald-500/30 text-emerald-400" : "border-border text-muted-foreground line-through"
+                "inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-wider",
+                report.ok ? "border-accent/30 text-accent" : "border-border text-muted-foreground line-through"
               )}
             >
               {report.name} {report.ok && `· ${report.count}`}
@@ -477,7 +477,7 @@ export function ResearchDetail({ projectId }: { projectId: string }) {
             hint="Click a page to preview it, or open the paper to read it in full"
           />
           {project.papers.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
               No papers came back from the scholarly indexes for this idea. Try the search links at the bottom, or
               rephrase the idea with more field-specific terms.
             </p>
@@ -507,7 +507,7 @@ export function ResearchDetail({ projectId }: { projectId: string }) {
             hint="What has already been claimed — and where the freedom to operate lies"
           />
           {project.patents.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+            <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
               No patents were found for this idea{" "}
               {project.sourcesSearched.some((r) => r.name === "Google Patents" && !r.ok)
                 ? "— Google Patents didn't answer this time. "
@@ -536,7 +536,7 @@ export function ResearchDetail({ projectId }: { projectId: string }) {
       {/* Gaps */}
       {analysis && analysis.gaps.length > 0 && (
         <section>
-          <SectionHeading icon={Sparkles} title="What the prior work leaves open" />
+          <SectionHeading icon={Telescope} title="What the prior work leaves open" />
           <Card className="border-accent/30 bg-accent/5">
             <CardContent className="p-5">
               <ul className="space-y-2">
@@ -588,7 +588,7 @@ export function ResearchDetail({ projectId }: { projectId: string }) {
                 <ol className="space-y-2">
                   {analysis.nextSteps.map((step, index) => (
                     <li key={index} className="flex gap-3 text-sm">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+                      <span className="nums w-6 shrink-0 pt-0.5 font-mono text-xs text-primary">
                         {index + 1}
                       </span>
                       <span className="pt-0.5">{step}</span>

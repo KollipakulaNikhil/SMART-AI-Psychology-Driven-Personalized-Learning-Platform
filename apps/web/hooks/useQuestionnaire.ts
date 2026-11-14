@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getQuestions, submitQuestionnaire } from "@/services/lessons.service";
+import { getDiscoveryChallenge, getQuestions, submitDiscovery, submitQuestionnaire } from "@/services/lessons.service";
 import { useAuth } from "@/context/AuthContext";
 import type { QuestionnaireAnswer } from "@/lib/types";
 
@@ -22,6 +22,29 @@ export function useSubmitQuestionnaire() {
 
   return useMutation({
     mutationFn: (answers: QuestionnaireAnswer[]) => submitQuestionnaire(answers),
+    onSuccess: (profile) => {
+      queryClient.setQueryData(["profile"], profile);
+      markProfileComplete();
+    },
+  });
+}
+
+export function useDiscoveryChallenge() {
+  const { firebaseUser } = useAuth();
+  return useQuery({
+    queryKey: ["discovery-challenge"],
+    queryFn: getDiscoveryChallenge,
+    enabled: Boolean(firebaseUser),
+    staleTime: Infinity,
+  });
+}
+
+export function useSubmitDiscovery() {
+  const queryClient = useQueryClient();
+  const { markProfileComplete } = useAuth();
+
+  return useMutation({
+    mutationFn: (signals: Record<string, unknown>) => submitDiscovery(signals),
     onSuccess: (profile) => {
       queryClient.setQueryData(["profile"], profile);
       markProfileComplete();

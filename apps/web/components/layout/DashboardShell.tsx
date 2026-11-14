@@ -1,20 +1,10 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  BrainCog,
-  FlaskConical,
-  History,
-  LayoutDashboard,
-  LogOut,
-  Map,
-  Menu,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { LogOut, Menu, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { Logo } from "./Logo";
@@ -25,13 +15,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { pageTransition } from "@/lib/motion";
 
+/* The sidebar is the notebook's contents page: numbered entries, no icons. */
 const NAV_ITEMS = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard, exact: true },
-  { href: "/dashboard/generate", label: "New lesson", icon: Sparkles, exact: false },
-  { href: "/dashboard/paths", label: "Learning paths", icon: Map, exact: false },
-  { href: "/dashboard/research", label: "Research Lab", icon: FlaskConical, exact: false },
-  { href: "/dashboard/history", label: "History", icon: History, exact: false },
-  { href: "/dashboard/profile", label: "Learning profile", icon: BrainCog, exact: false },
+  { href: "/dashboard", label: "Overview", exact: true },
+  { href: "/dashboard/generate", label: "New lesson", exact: false },
+  { href: "/dashboard/paths", label: "Learning paths", exact: false },
+  { href: "/dashboard/crossover", label: "Crossover", exact: false },
+  { href: "/dashboard/research", label: "Research Lab", exact: false },
+  { href: "/dashboard/mistake-hunt", label: "Mistake Hunt", exact: false },
+  { href: "/dashboard/history", label: "History", exact: false },
+  { href: "/dashboard/profile", label: "Learning profile", exact: false },
 ];
 
 /** `scope` keeps the desktop and mobile-drawer instances' shared layoutId from colliding
@@ -40,31 +33,40 @@ function NavLinks({ onNavigate, scope }: { onNavigate?: () => void; scope: strin
   const pathname = usePathname();
 
   return (
-    <nav className="flex flex-col gap-1">
-      {NAV_ITEMS.map(({ href, label, icon: Icon, exact }) => {
-        const active = exact ? pathname === href : pathname.startsWith(href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            onClick={onNavigate}
-            className={cn(
-              "relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-colors",
-              active ? "text-primary" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-            )}
-          >
-            {active && (
-              <motion.span
-                layoutId={`nav-pill-${scope}`}
-                className="absolute inset-0 rounded-xl bg-primary/15"
-                transition={{ type: "spring", stiffness: 400, damping: 32 }}
-              />
-            )}
-            <Icon className="relative h-4 w-4" aria-hidden />
-            <span className="relative">{label}</span>
-          </Link>
-        );
-      })}
+    <nav aria-label="Notebook" className="flex flex-col">
+      <p className="label-mono mb-2 px-3">Contents</p>
+      <ul className="border-t border-foreground/20">
+        {NAV_ITEMS.map(({ href, label, exact }, index) => {
+          const active = exact ? pathname === href : pathname.startsWith(href);
+          return (
+            <li key={href} className="border-b border-foreground/20">
+              <Link
+                href={href}
+                onClick={onNavigate}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "group relative flex min-h-11 items-baseline gap-3 px-3 py-3 text-[15px] transition-colors",
+                  active ? "font-semibold text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {active && (
+                  <motion.span
+                    layoutId={`nav-pill-${scope}`}
+                    className="absolute inset-y-0 left-0 w-[3px] bg-mark"
+                    transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                  />
+                )}
+                <span className={cn("nums font-mono text-[11px] font-normal", active ? "text-primary" : "text-muted-foreground")}>
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="group-hover:underline group-hover:decoration-foreground/40 group-hover:underline-offset-4">
+                  {label}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
     </nav>
   );
 }
@@ -84,11 +86,11 @@ function UserSection() {
   };
 
   return (
-    <div className="mt-auto border-t border-border pt-4">
-      <div className="flex items-center gap-3 px-2">
+    <div className="mt-auto border-t border-foreground pt-4">
+      <div className="flex items-center gap-3 px-1">
         <Avatar src={sessionUser?.photoUrl ?? firebaseUser?.photoURL} name={name} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{name}</p>
+          <p className="truncate text-sm font-semibold">{name}</p>
           <p className="truncate text-xs text-muted-foreground">
             {sessionUser?.email ?? firebaseUser?.email}
           </p>
@@ -123,10 +125,31 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     }
   }, [loading, firebaseUser, hasProfile, pathname, router]);
 
+  // The drawer is a modal: Escape closes it, focus moves into it on open and
+  // returns to the menu button on close.
+  const drawerRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const returnTo = menuButtonRef.current;
+    const frame = requestAnimationFrame(() => {
+      drawerRef.current?.querySelector<HTMLElement>("[data-drawer-close]")?.focus();
+    });
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", onKey);
+      returnTo?.focus();
+    };
+  }, [mobileOpen]);
+
   if (loading || !firebaseUser) {
     return (
       <div className="flex min-h-screen">
-        <div className="hidden w-64 border-r border-border p-6 lg:block">
+        <div className="hidden w-64 border-r border-foreground/20 p-6 lg:block">
           <Skeleton className="h-9 w-32" />
           <div className="mt-10 space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
@@ -149,8 +172,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen">
       {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-border bg-card/40 p-5 backdrop-blur-xl lg:flex">
-        <div className="mb-8 flex items-center justify-between px-2">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-foreground/20 bg-background p-5 lg:flex">
+        <div className="mb-9 flex items-center justify-between pl-1">
           <Logo href="/dashboard" />
           <ThemeToggle />
         </div>
@@ -159,15 +182,18 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       </aside>
 
       {/* Mobile header */}
-      <div className="fixed inset-x-0 top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur-xl lg:hidden">
+      <div className="fixed inset-x-0 top-0 z-30 flex h-16 items-center justify-between border-b border-foreground bg-background px-4 lg:hidden">
         <Logo href="/dashboard" />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <ThemeToggle />
           <Button
+            ref={menuButtonRef}
             variant="ghost"
             size="icon"
             onClick={() => setMobileOpen((open) => !open)}
             aria-label="Toggle menu"
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-drawer"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
@@ -182,17 +208,34 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-30 bg-background/70 backdrop-blur-sm lg:hidden"
+              aria-hidden
+              className="fixed inset-0 z-40 bg-foreground/40 lg:hidden"
               onClick={() => setMobileOpen(false)}
             />
             <motion.aside
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-border bg-card p-5 lg:hidden"
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              ref={drawerRef}
+              id="mobile-drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Notebook contents"
+              className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col overflow-y-auto border-r-2 border-foreground bg-background p-5 lg:hidden"
             >
-              <Logo href="/dashboard" className="mb-8 px-2" />
+              <div className="mb-9 flex items-center justify-between pl-1">
+                <Logo href="/dashboard" />
+                <Button
+                  data-drawer-close
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setMobileOpen(false)}
+                  aria-label="Close menu"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
               <NavLinks onNavigate={() => setMobileOpen(false)} scope="mobile" />
               <UserSection />
             </motion.aside>
@@ -200,7 +243,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         )}
       </AnimatePresence>
 
-      <main className="flex-1 px-4 pb-16 pt-24 sm:px-6 lg:ml-64 lg:px-10 lg:pt-10">
+      <main className="min-w-0 flex-1 px-4 pb-20 pt-24 sm:px-6 lg:ml-64 lg:px-12 lg:pt-12">
         {/* popLayout lets the incoming page start fading in immediately instead of
             waiting on the outgoing one — frequent in-app nav should feel snappy,
             not like a page-load. */}

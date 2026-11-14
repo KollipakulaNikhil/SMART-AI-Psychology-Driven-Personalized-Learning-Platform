@@ -100,6 +100,16 @@ export interface GenerationOptions {
   boardLanguage?: LessonLanguage;
 }
 
+/** One AI-animated shot illustrating part of a slide's narration. */
+export interface VideoScene {
+  /** Text-to-video prompt sent to the Wan model. */
+  prompt: string;
+  /** Blob URL of the generated clip — kept so a re-render never pays for it twice. */
+  clipPath?: string;
+}
+
+export type VideoEngine = "board" | "wan";
+
 export interface SlideContent {
   index: number;
   title: string;
@@ -121,6 +131,8 @@ export interface SlideContent {
    * rebuilt later (e.g. after a board edit) without re-synthesising the audio.
    */
   wordTimings?: WordTiming[];
+  /** AI-animated shots for the lesson video; absent until the video job plans them. */
+  videoScenes?: VideoScene[];
 }
 
 export interface QuizQuestion {
@@ -155,6 +167,10 @@ export interface PresentationDocument extends Document<Types.ObjectId> {
   fullAudioPath?: string;
   videoPath?: string;
   videoDurationSec?: number;
+  /** What drew the current video: Wan-animated scenes or the classic board. */
+  videoEngine?: VideoEngine;
+  /** Blob URL of the animated teacher clip used for the intro, outro and on-screen bubble. */
+  teacherClipPath?: string;
   /** When the current background video render started — used to detect stalled jobs. */
   videoJobStartedAt?: Date;
   /** True when a lip-synced talking-head presenter was composited into the video. */
@@ -263,6 +279,14 @@ const wordTimingSchema = new Schema<WordTiming>(
   { _id: false }
 );
 
+const videoSceneSchema = new Schema<VideoScene>(
+  {
+    prompt: { type: String, required: true },
+    clipPath: { type: String },
+  },
+  { _id: false }
+);
+
 const slideSchema = new Schema<SlideContent>(
   {
     index: { type: Number, required: true },
@@ -279,6 +303,7 @@ const slideSchema = new Schema<SlideContent>(
     audioPath: { type: String },
     audioDurationSec: { type: Number },
     wordTimings: { type: [wordTimingSchema], default: undefined },
+    videoScenes: { type: [videoSceneSchema], default: undefined },
   },
   { _id: false }
 );
@@ -320,6 +345,8 @@ const presentationSchema = new Schema<PresentationDocument>(
     fullAudioPath: { type: String },
     videoPath: { type: String },
     videoDurationSec: { type: Number },
+    videoEngine: { type: String, enum: ["board", "wan"] },
+    teacherClipPath: { type: String },
     videoJobStartedAt: { type: Date },
     hasAvatar: { type: Boolean, default: false },
     srtPath: { type: String },

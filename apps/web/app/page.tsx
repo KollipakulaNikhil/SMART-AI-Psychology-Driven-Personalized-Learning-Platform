@@ -8,7 +8,6 @@ import {
   HowItWorks,
   Navbar,
 } from "@/features/landing/LandingSections";
-import { StatsStrip } from "@/features/landing/StatsStrip";
 
 export default function LandingPage() {
   return (
@@ -20,7 +19,6 @@ export default function LandingPage() {
         <Difference />
         <BoardSection />
         <Capabilities />
-        <StatsStrip />
         <FinalCta />
       </main>
       <Footer />

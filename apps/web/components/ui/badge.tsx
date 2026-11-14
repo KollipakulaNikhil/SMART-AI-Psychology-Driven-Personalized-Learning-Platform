@@ -2,17 +2,18 @@ import type { HTMLAttributes } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
+// A badge is a small printed tag: mono caps, hairline border, square-ish.
 const badgeVariants = cva(
-  "inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors",
+  "inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 font-mono text-[10.5px] font-medium uppercase leading-4 tracking-[0.08em] transition-colors",
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary/15 text-primary",
-        secondary: "border-transparent bg-secondary/15 text-secondary",
-        accent: "border-transparent bg-accent/15 text-accent",
-        success: "border-transparent bg-emerald-500/15 text-emerald-400",
-        warning: "border-transparent bg-amber-500/15 text-amber-400",
-        destructive: "border-transparent bg-destructive/15 text-red-400",
+        default: "border-primary/40 bg-primary/[0.07] text-primary",
+        secondary: "border-foreground/25 bg-elevated text-foreground",
+        accent: "border-accent/40 bg-accent/[0.08] text-accent",
+        success: "border-accent/40 bg-accent/[0.08] text-accent",
+        warning: "border-amber/50 bg-amber/10 text-amber",
+        destructive: "border-destructive/40 bg-destructive/[0.07] text-destructive",
         outline: "border-border text-muted-foreground",
       },
     },

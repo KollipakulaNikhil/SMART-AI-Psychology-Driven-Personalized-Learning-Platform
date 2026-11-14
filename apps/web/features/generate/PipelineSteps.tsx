@@ -18,25 +18,25 @@ function StepIcon({ state }: { state: PipelineStep["state"] }) {
         <motion.span
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400"
+          className="flex h-8 w-8 items-center justify-center rounded-sm border border-accent bg-accent text-accent-foreground"
         >
           <Check className="h-4 w-4" />
         </motion.span>
       );
     case "running":
       return (
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-primary">
+        <span className="flex h-8 w-8 items-center justify-center rounded-sm border border-primary text-primary">
           <Loader2 className="h-4 w-4 animate-spin" />
         </span>
       );
     case "failed":
       return (
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-destructive/20 text-red-400">
+        <span className="flex h-8 w-8 items-center justify-center rounded-sm border border-destructive text-destructive">
           <AlertCircle className="h-4 w-4" />
         </span>
       );
     default:
-      return <span className="h-8 w-8 rounded-full border-2 border-dashed border-border" />;
+      return <span className="h-8 w-8 rounded-sm border border-dashed border-input" />;
   }
 }
 
@@ -57,7 +57,7 @@ export function PipelineSteps({ steps, error }: PipelineStepsProps) {
                   <span
                     className={cn(
                       "my-1 w-px flex-1 min-h-6",
-                      step.state === "done" ? "bg-emerald-500/40" : "bg-border"
+                      step.state === "done" ? "bg-accent" : "bg-foreground/20"
                     )}
                   />
                 )}
@@ -80,7 +80,7 @@ export function PipelineSteps({ steps, error }: PipelineStepsProps) {
         </ol>
 
         {error && (
-          <div className="mt-2 rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-sm text-red-300">
+          <div className="mt-2 rounded-md border border-destructive bg-destructive/[0.06] p-4 text-sm text-destructive">
             {error}
           </div>
         )}

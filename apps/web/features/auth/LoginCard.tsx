@@ -116,28 +116,28 @@ export function LoginCard() {
           exit={{ opacity: 0, y: -8 }}
           transition={easeOut}
         >
-          <span className="eyebrow">{mode === "signin" ? "Welcome back" : "Get started"}</span>
-          <h1 className="mt-3 text-h2">
+          <span className="label-mono">{mode === "signin" ? "Welcome back" : "Get started"}</span>
+          <h1 className="page-title mt-3 text-balance">
             {mode === "signin" ? "Sign in to keep learning" : "Create your account"}
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
             {mode === "signin"
               ? "Pick up right where your last lesson left off."
-              : "Two minutes of questions, then lessons built for how you think."}
+              : "Three minutes of discovery, then lessons built for how you think."}
           </p>
         </motion.div>
       </AnimatePresence>
 
-      <div className="mt-7 space-y-4">
+      <div className="mt-8 space-y-5">
         <Button variant="outline" className="w-full" onClick={onGoogle} loading={googleLoading} type="button">
           {!googleLoading && <GoogleIcon />}
           Continue with Google
         </Button>
 
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="h-px flex-1 bg-border" />
+        <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+          <span className="h-px flex-1 bg-foreground/25" />
           or with email
-          <span className="h-px flex-1 bg-border" />
+          <span className="h-px flex-1 bg-foreground/25" />
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
@@ -164,7 +164,7 @@ export function LoginCard() {
               autoComplete="email"
               {...register("email")}
             />
-            {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+            {errors.email && <p role="alert" className="text-xs font-medium text-destructive">{errors.email.message}</p>}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="password">Password</Label>
@@ -175,18 +175,18 @@ export function LoginCard() {
               autoComplete={mode === "signup" ? "new-password" : "current-password"}
               {...register("password")}
             />
-            {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+            {errors.password && <p role="alert" className="text-xs font-medium text-destructive">{errors.password.message}</p>}
           </div>
           <Button type="submit" variant="gradient" className="w-full" loading={isSubmitting}>
             {mode === "signin" ? "Sign in" : "Create account"}
           </Button>
         </form>
 
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="border-t border-foreground/20 pt-4 text-sm text-muted-foreground">
           {mode === "signin" ? "New to SMART AI?" : "Already have an account?"}{" "}
           <button
             type="button"
-            className="font-medium text-primary hover:underline"
+            className="link-ink -my-3 py-3 font-medium"
             onClick={() => setMode((current) => (current === "signin" ? "signup" : "signin"))}
           >
             {mode === "signin" ? "Create an account" : "Sign in"}

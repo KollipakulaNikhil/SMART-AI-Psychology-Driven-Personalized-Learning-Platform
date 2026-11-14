@@ -35,7 +35,7 @@ export function PlayArena({ lesson }: { lesson: PresentationDetail }) {
 
   if (lesson.quiz.length === 0) {
     return (
-      <div className="rounded-3xl border border-border bg-card p-10 text-center text-muted-foreground">
+      <div className="rounded-lg border border-border bg-card p-10 text-center text-muted-foreground">
         This lesson has no quiz to play yet.
       </div>
     );
@@ -48,7 +48,7 @@ export function PlayArena({ lesson }: { lesson: PresentationDetail }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <meta.icon className="h-4 w-4 text-amber-500" /> {meta.name}
+          <meta.icon className="h-4 w-4 text-amber" /> {meta.name}
         </p>
         <Button variant="outline" size="sm" onClick={() => setSelected(null)}>
           <LayoutGrid className="h-3.5 w-3.5" /> Change game

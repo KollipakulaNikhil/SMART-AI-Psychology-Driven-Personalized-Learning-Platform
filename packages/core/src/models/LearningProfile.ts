@@ -36,6 +36,10 @@ export interface LearningProfileDocument extends Document<Types.ObjectId> {
   userId: Types.ObjectId;
   traits: LearnerTraits;
   answers: QuestionnaireAnswer[];
+  /** How the traits were measured: the old survey or the behaviour-based discovery activities. */
+  method?: "survey" | "discovery";
+  /** Raw measurements from the discovery activities, kept so scoring can be re-run later. */
+  signals?: Record<string, unknown>;
   version: number;
   completedAt: Date;
   createdAt: Date;
@@ -71,6 +75,8 @@ const learningProfileSchema = new Schema<LearningProfileDocument>(
         optionIds: { type: [String], required: true },
       },
     ],
+    method: { type: String, enum: ["survey", "discovery"] },
+    signals: { type: Schema.Types.Mixed },
     version: { type: Number, default: 1 },
     completedAt: { type: Date, default: Date.now },
   },

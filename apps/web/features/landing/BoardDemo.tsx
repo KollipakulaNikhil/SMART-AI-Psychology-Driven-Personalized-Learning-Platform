@@ -175,8 +175,8 @@ function Segmented<T extends string>({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[11px] font-medium uppercase tracking-wider text-slate-500">{label}</span>
-      <div className="flex rounded-full bg-white/[0.06] p-0.5">
+      <span className="font-mono text-[11px] font-medium uppercase tracking-wider text-slate-400">{label}</span>
+      <div className="flex rounded-md border border-white/20 p-0.5">
         {options.map((option) => (
           <button
             key={option.value}
@@ -184,7 +184,7 @@ function Segmented<T extends string>({
             onClick={() => onChange(option.value)}
             aria-pressed={value === option.value}
             className={cn(
-              "relative rounded-full px-2.5 py-1 text-xs transition-colors",
+              "relative min-h-11 rounded-[3px] px-3 text-xs font-medium transition-colors",
               value === option.value ? "text-slate-900" : "text-slate-300 hover:text-white"
             )}
           >
@@ -192,7 +192,7 @@ function Segmented<T extends string>({
               <motion.span
                 layoutId={`seg-${label}`}
                 transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                className="absolute inset-0 rounded-full bg-white"
+                className="absolute inset-0 rounded-[3px] bg-[#F6F1E7]"
               />
             )}
             <span className="relative">{option.label}</span>
@@ -282,8 +282,7 @@ export function BoardDemo({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "grain relative overflow-hidden rounded-[1.75rem] border border-white/10",
-        "bg-gradient-to-b from-[#0B1120] to-[#0d1426] shadow-float",
+        "grain relative overflow-hidden rounded-lg border-2 border-foreground bg-[#0B1120] shadow-hard",
         className
       )}
     >
@@ -296,11 +295,10 @@ export function BoardDemo({ className }: { className?: string }) {
           backgroundSize: "44px 44px",
         }}
       />
-      <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-brand-gradient" />
 
       {/* controls — the visitor drives this, it is not a video */}
       <div className="relative flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-white/[0.06] px-4 py-2.5 sm:px-5">
-        <span className="flex items-center gap-1.5 text-[11px] font-medium text-slate-400">
+        <span className="flex items-center gap-1.5 font-mono text-[11px] font-medium uppercase tracking-wider text-slate-400">
           <Volume2 className="h-3 w-3 text-cyan-400" />
           Voice
         </span>
@@ -328,7 +326,7 @@ export function BoardDemo({ className }: { className?: string }) {
 
       <div className="relative p-5 sm:p-7">
         <h3 className="font-hand text-2xl font-bold text-slate-50 sm:text-[1.75rem]">{board.title}</h3>
-        <div className="mb-6 mt-1.5 h-1 w-24 rounded-full bg-gradient-to-r from-indigo-400 to-cyan-400" />
+        <div className="mb-6 mt-1.5 h-[3px] w-24 rounded-full bg-cyan-300/80" />
 
         <div className="grid min-h-[13rem] gap-6 sm:grid-cols-2">
           <div className="space-y-4">
@@ -357,7 +355,7 @@ export function BoardDemo({ className }: { className?: string }) {
                             animate={{ scaleX: 1 }}
                             style={{ originX: 0 }}
                             transition={{ duration: 0.35 }}
-                            className="absolute -bottom-0.5 left-0 h-[2px] w-full rounded-full bg-gradient-to-r from-cyan-300 to-transparent"
+                            className="absolute -bottom-0.5 left-0 h-[2px] w-full rounded-full bg-cyan-300"
                           />
                         )}
                       </span>
@@ -367,7 +365,7 @@ export function BoardDemo({ className }: { className?: string }) {
               </AnimatePresence>
             </ul>
 
-            <div className="space-y-1.5 border-l-2 border-violet-400/40 pl-3">
+            <div className="space-y-1.5 border-l-2 border-amber-200/40 pl-3">
               <AnimatePresence>
                 {board.notes.map((note, i) =>
                   isShown("note", i) ? (
@@ -399,8 +397,8 @@ export function BoardDemo({ className }: { className?: string }) {
                     {i > 0 && <Connector />}
                     <div
                       className={cn(
-                        "relative w-full max-w-[15rem] rounded-xl border-2 px-3 py-2.5 text-center text-[13px] font-semibold text-slate-100",
-                        i % 2 ? "border-cyan-400/80 bg-cyan-500/10" : "border-indigo-400/80 bg-indigo-500/15",
+                        "relative w-full max-w-[15rem] rounded-md border-2 px-3 py-2.5 text-center text-[13px] font-semibold text-slate-100",
+                        i % 2 ? "border-cyan-300/80 bg-cyan-300/10" : "border-amber-200/80 bg-amber-200/10",
                         isActive("node", i) && "ring-2 ring-cyan-300/60"
                       )}
                     >
@@ -415,7 +413,7 @@ export function BoardDemo({ className }: { className?: string }) {
         </div>
 
         {/* the spoken line — the thing the writing is synced to */}
-        <div className="mt-6 min-h-[3.5rem] rounded-xl border border-white/[0.07] bg-black/25 px-4 py-2.5">
+        <div className="mt-6 min-h-[3.5rem] rounded-md border border-white/15 bg-black/25 px-4 py-2.5">
           <AnimatePresence mode="wait">
             <motion.p
               key={`${lang}-${captionIndex}`}
@@ -435,7 +433,7 @@ export function BoardDemo({ className }: { className?: string }) {
             type="button"
             onClick={() => setPlaying((value) => !value)}
             aria-label={playing ? "Pause the board" : "Play the board"}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-white/25 text-white transition-colors hover:bg-white/15"
           >
             {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="ml-0.5 h-3.5 w-3.5" />}
           </button>
@@ -443,12 +441,12 @@ export function BoardDemo({ className }: { className?: string }) {
             type="button"
             onClick={restart}
             aria-label="Restart the board"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition-colors hover:bg-white/20"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-white/25 text-white transition-colors hover:bg-white/15"
           >
             <RotateCcw className="h-3.5 w-3.5" />
           </button>
-          <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/[0.09]">
-            <div className="h-full rounded-full bg-brand-gradient" style={{ width: `${progress}%` }} />
+          <div className="h-1 flex-1 overflow-hidden bg-white/[0.12]">
+            <div className="h-full bg-[#E8552D]" style={{ width: `${progress}%` }} />
           </div>
         </div>
       </div>

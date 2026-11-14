@@ -201,6 +201,7 @@ export interface PresentationDetail {
   boardLanguageLocale: string;
   videoDurationSec: number | null;
   hasAvatar: boolean;
+  videoEngine: "board" | "wan" | null;
   createdAt: string;
   updatedAt: string;
 }

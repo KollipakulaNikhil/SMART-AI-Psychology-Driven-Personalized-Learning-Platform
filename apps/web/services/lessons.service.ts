@@ -29,6 +29,15 @@ export const getQuestions = () => apiGet<QuestionView[]>("/questionnaire");
 export const submitQuestionnaire = (answers: QuestionnaireAnswer[]) =>
   apiPost<LearningProfileData>("/questionnaire", { answers });
 
+export interface DiscoveryChallengeQuestion {
+  id: string;
+  text: string;
+  options: string[];
+}
+export const getDiscoveryChallenge = () => apiGet<DiscoveryChallengeQuestion[]>("/questionnaire/discovery");
+export const submitDiscovery = (signals: Record<string, unknown>) =>
+  apiPost<LearningProfileData>("/questionnaire/discovery", { signals });
+
 // ── Generation pipeline ─────────────────────────────────────────────────────
 export interface GenerateContentPayload {
   topic: string;
@@ -121,6 +130,35 @@ export const askTutor = (
   slideIndex: number | undefined,
   history: TutorTurn[]
 ) => apiPost<TutorReply>("/tutor/chat", { presentationId, message, slideIndex, history });
+
+// ── Crossover ───────────────────────────────────────────────────────────────
+export interface CrossoverLessonRef {
+  id: string;
+  title: string;
+  subject: string;
+}
+export interface CrossoverView {
+  first: CrossoverLessonRef;
+  second: CrossoverLessonRef;
+  bridge: string;
+  links: { first: string; second: string; why: string }[];
+  breaksAt: string;
+  challenge: { question: string; answer: string };
+}
+/** Finds what two of the learner's own lessons have in common. Nothing is stored. */
+export const createCrossover = (firstId: string, secondId: string) =>
+  apiPost<CrossoverView>("/crossover", { firstId, secondId });
+
+// ── Mistake Hunt ────────────────────────────────────────────────────────────
+export interface MistakeHuntView {
+  topic: string;
+  difficulty: "obvious" | "subtle";
+  title: string;
+  sentences: { text: string; isWrong: boolean; correction: string; reason: string }[];
+}
+/** A short explanation of any topic with a few deliberate mistakes to find. Nothing is stored. */
+export const createMistakeHunt = (topic: string, difficulty: MistakeHuntView["difficulty"]) =>
+  apiPost<MistakeHuntView>("/mistake-hunt", { topic, difficulty });
 
 // ── Research Lab ────────────────────────────────────────────────────────────
 /** Shares a research idea; the server answers 202 and works in the background. */

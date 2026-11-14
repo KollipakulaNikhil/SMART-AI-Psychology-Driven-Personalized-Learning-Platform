@@ -19,11 +19,10 @@ import {
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProfile } from "@/hooks/useProfile";
 import { TRAIT_DESCRIPTIONS, TRAIT_LABELS } from "@/lib/constants";
-import { formatDate, titleCase } from "@/lib/utils";
+import { cn, formatDate, titleCase } from "@/lib/utils";
 
 const TRAIT_ICONS: Record<string, typeof Brain> = {
   learningStyle: Eye,
@@ -45,9 +44,13 @@ export function ProfileView() {
 
   if (isLoading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="border-t border-foreground" aria-busy="true">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-32" />
+          <div key={i} className="border-b border-foreground/20 py-4">
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="mt-2.5 h-6 w-40" />
+            <Skeleton className="mt-2.5 h-3 w-2/3" />
+          </div>
         ))}
       </div>
     );
@@ -55,12 +58,13 @@ export function ProfileView() {
 
   if (!profile) {
     return (
-      <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border py-20 text-center">
-        <p className="text-lg font-medium">No learning profile yet</p>
-        <p className="max-w-sm text-sm text-muted-foreground">
-          Take the 20-question psychology assessment so SMART AI can adapt every lesson to you.
+      <div className="ruled border-y border-foreground px-1 py-16 sm:px-8" style={{ ["--rule-gap" as string]: "2.5rem" }}>
+        <p className="label-mono">Blank page</p>
+        <p className="mt-3 font-display text-3xl leading-tight">No learning profile yet.</p>
+        <p className="mt-2 max-w-sm text-[15px] text-muted-foreground">
+          Do the three-minute learning discovery so SMART AI can adapt every lesson to you.
         </p>
-        <Link href="/dashboard/questionnaire" className={buttonVariants({ variant: "gradient" })}>
+        <Link href="/dashboard/questionnaire" className={cn(buttonVariants({ variant: "gradient" }), "mt-6")}>
           Take the assessment
         </Link>
       </div>
@@ -83,38 +87,37 @@ export function ProfileView() {
         </Link>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {/* The profile as an index: one ruled entry per trait, not a wall of cards. */}
+      <dl className="border-t border-foreground">
         {entries.map(([key, value], index) => {
           const Icon = TRAIT_ICONS[key] ?? Brain;
           return (
             <motion.div
               key={key}
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.04 }}
+              transition={{ delay: Math.min(index * 0.03, 0.3), duration: 0.25 }}
+              className="grid gap-x-6 gap-y-1 border-b border-foreground/20 py-4 sm:grid-cols-[2.5rem_13rem_1fr]"
             >
-              <Card className="h-full">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15">
-                      <Icon className="h-5 w-5 text-primary" aria-hidden />
-                    </span>
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                        {TRAIT_LABELS[key] ?? titleCase(key)}
-                      </p>
-                      <p className="font-semibold text-primary">{titleCase(value)}</p>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    {TRAIT_DESCRIPTIONS[key] ?? ""}
+              <span className="nums hidden pt-1 font-mono text-xs text-primary sm:block">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <dt className="label-mono pt-1">
+                <Icon className="h-3.5 w-3.5" aria-hidden />
+                {TRAIT_LABELS[key] ?? titleCase(key)}
+              </dt>
+              <dd>
+                <p className="font-display text-xl leading-snug">{titleCase(value)}</p>
+                {TRAIT_DESCRIPTIONS[key] && (
+                  <p className="mt-1 max-w-prose text-sm leading-relaxed text-muted-foreground">
+                    {TRAIT_DESCRIPTIONS[key]}
                   </p>
-                </CardContent>
-              </Card>
+                )}
+              </dd>
             </motion.div>
           );
         })}
-      </div>
+      </dl>
     </div>
   );
 }

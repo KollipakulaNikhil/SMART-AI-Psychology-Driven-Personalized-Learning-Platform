@@ -76,6 +76,7 @@ export function serializePresentation(doc: PresentationDocument) {
     boardLanguageLocale: languageDefinition(boardLanguage).locale,
     videoDurationSec: doc.videoDurationSec ?? null,
     hasAvatar: doc.hasAvatar ?? false,
+    videoEngine: doc.videoEngine ?? null,
     createdAt: doc.createdAt,
     updatedAt: doc.updatedAt,
   };

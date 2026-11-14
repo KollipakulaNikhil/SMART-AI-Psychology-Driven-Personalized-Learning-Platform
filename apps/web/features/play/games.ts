@@ -1,4 +1,4 @@
-import { Flower2, Mountain, Skull, Sparkles } from "lucide-react";
+import { Flower2, Mountain, Skull, Telescope } from "lucide-react";
 import type { GameMeta } from "./GameShell";
 import { BossPreview, BossScene } from "./scenes/BossScene";
 import { ClimbPreview, ClimbScene } from "./scenes/ClimbScene";
@@ -45,7 +45,7 @@ export const GAMES: (GameMeta & { id: GameId })[] = [
     id: "constellation",
     name: "Constellation",
     tagline: "A comet places one star per question. Draw your own constellation across the night.",
-    icon: Sparkles,
+    icon: Telescope,
     tone: "dark",
     sceneBg: "#070b1f",
     unit: "Stars",

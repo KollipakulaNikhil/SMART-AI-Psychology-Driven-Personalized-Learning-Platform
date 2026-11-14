@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, FileText, Languages, Map, Sparkles, Target, Upload, X } from "lucide-react";
+import { ArrowRight, FileText, Languages, Map, Target, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -86,7 +86,7 @@ export function PathsView() {
 
   return (
     <div className="space-y-8">
-      <Card className="border-primary/30 bg-gradient-to-br from-primary/10 to-card">
+      <Card className="border-2 border-foreground">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Target className="h-5 w-5 text-primary" /> Where do you want to get to?
@@ -98,7 +98,7 @@ export function PathsView() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="inline-flex rounded-full border border-border p-1">
+          <div className="inline-flex rounded-md border border-foreground p-0.5">
             {(
               [
                 { key: "goal", label: "From a goal" },
@@ -111,9 +111,9 @@ export function PathsView() {
                 disabled={isPending}
                 onClick={() => setMode(option.key)}
                 className={cn(
-                  "rounded-full px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-50",
+                  "min-h-11 rounded-[3px] px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-50",
                   mode === option.key
-                    ? "bg-brand-gradient text-white"
+                    ? "bg-foreground text-background"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -150,7 +150,7 @@ export function PathsView() {
                   type="button"
                   disabled={isPending}
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex w-full flex-col items-center gap-2 rounded-xl border border-dashed border-border py-8 text-center transition-colors hover:border-primary/50 disabled:opacity-50"
+                  className="flex w-full flex-col items-center gap-2 rounded-md border border-dashed border-border py-8 text-center transition-colors hover:border-primary/50 disabled:opacity-50"
                 >
                   <Upload className="h-6 w-6 text-primary" />
                   <span className="text-sm font-medium">Click to choose a PDF</span>
@@ -159,7 +159,7 @@ export function PathsView() {
                   </span>
                 </button>
               ) : (
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
+                <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
                   <div className="flex min-w-0 items-center gap-2">
                     <FileText className="h-5 w-5 shrink-0 text-primary" />
                     <span className="truncate text-sm font-medium">{file.name}</span>
@@ -174,7 +174,8 @@ export function PathsView() {
                       setFile(null);
                       if (fileInputRef.current) fileInputRef.current.value = "";
                     }}
-                    className="shrink-0 rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                    aria-label="Remove PDF"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -186,7 +187,7 @@ export function PathsView() {
                 loading={createFromPdfMutation.isPending}
                 disabled={!file}
               >
-                <Sparkles className="h-4 w-4" /> Plan my path from this PDF
+                <Map className="h-4 w-4" /> Plan my path from this PDF
               </Button>
             </div>
           )}
@@ -204,10 +205,10 @@ export function PathsView() {
                   onClick={() => setLanguage(choice.code)}
                   title={choice.label}
                   className={cn(
-                    "rounded-full border px-4 py-1.5 text-sm transition-colors disabled:opacity-50",
+                    "min-h-11 rounded-md border px-4 py-1.5 text-sm font-medium transition-colors disabled:opacity-50",
                     language === choice.code
-                      ? "border-primary bg-primary/15 text-primary"
-                      : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                      ? "border-foreground bg-foreground text-background"
+                      : "border-input text-foreground hover:border-foreground"
                   )}
                 >
                   {choice.nativeLabel}
@@ -225,7 +226,7 @@ export function PathsView() {
           ))}
         </div>
       ) : !courses || courses.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border py-16 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border py-16 text-center">
           <Map className="h-8 w-8 text-muted-foreground" />
           <p className="font-medium">No learning paths yet</p>
           <p className="max-w-sm text-sm text-muted-foreground">
@@ -242,7 +243,7 @@ export function PathsView() {
               transition={{ delay: Math.min(index * 0.06, 0.4) }}
             >
               <Link href={`/dashboard/paths/${course.id}`} className="group block h-full">
-                <Card className="h-full transition-all group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:shadow-lg group-hover:shadow-primary/10">
+                <Card className="h-full transition-all group-hover:-translate-x-0.5 group-hover:-translate-y-0.5 group-hover:border-foreground group-hover:shadow-hard">
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-1.5">

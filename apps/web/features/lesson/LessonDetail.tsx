@@ -21,7 +21,6 @@ import {
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLesson } from "@/hooks/useLessons";
 import { useSubmitQuiz } from "@/hooks/useLearning";
@@ -30,8 +29,9 @@ import { toErrorMessage } from "@/services/api";
 import { LESSON_LANGUAGE_LABELS, staticUrl } from "@/lib/constants";
 import { cn, formatDate, titleCase } from "@/lib/utils";
 import type { QuizAttemptResult, QuizQuestion } from "@/lib/types";
-import { TutorChat } from "./TutorChat";
+import { LessonSidePanel } from "./LessonSidePanel";
 import { InteractiveLesson } from "./InteractiveLesson";
+import { AnimatedExplainer } from "@/features/video/AnimatedExplainer";
 
 const DOWNLOADS: { asset: DownloadableAsset; label: string; icon: typeof Film; hint: string }[] = [
   { asset: "video", label: "Video", icon: Film, hint: "MP4 · narrated lesson" },
@@ -56,27 +56,51 @@ function DownloadButtons({ lessonId, available }: { lessonId: string; available:
   };
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-      {DOWNLOADS.map(({ asset, label, icon: Icon, hint }) => (
-        <Button
-          key={asset}
-          variant="outline"
-          className="h-auto flex-col items-start gap-1 p-4"
-          disabled={!available[asset]}
-          loading={busy === asset}
-          onClick={() => handleDownload(asset)}
-        >
-          <span className="flex w-full items-center justify-between">
-            <Icon className="h-4 w-4 text-primary" />
-            <Download className="h-3.5 w-3.5 text-muted-foreground" />
-          </span>
-          <span className="font-semibold">{label}</span>
-          <span className="text-xs font-normal text-muted-foreground">
-            {available[asset] ? hint : "Not generated"}
-          </span>
-        </Button>
-      ))}
-    </div>
+    <table className="w-full border-t border-foreground text-sm">
+      <caption className="sr-only">Downloads</caption>
+      <thead>
+        <tr className="border-b border-foreground/20">
+          <th scope="col" className="label-mono py-2 pr-3 text-left font-medium">Asset</th>
+          <th scope="col" className="label-mono hidden py-2 pr-3 text-left font-medium sm:table-cell">Format</th>
+          <th scope="col" className="label-mono py-2 pr-3 text-left font-medium">Status</th>
+          <th scope="col" className="py-2 text-right">
+            <span className="sr-only">Download</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {DOWNLOADS.map(({ asset, label, icon: Icon, hint }) => (
+          <tr key={asset} className="border-b border-foreground/20">
+            <th scope="row" className="py-2 pr-3 text-left font-medium">
+              <span className="flex items-center gap-2.5">
+                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                {label}
+              </span>
+            </th>
+            <td className="hidden py-2 pr-3 text-muted-foreground sm:table-cell">{hint}</td>
+            <td className="py-2 pr-3">
+              <span className={cn("label-mono", available[asset] ? "text-accent" : "text-muted-foreground")}>
+                {available[asset] ? "Ready" : "Not generated"}
+              </span>
+            </td>
+            <td className="py-1 text-right">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="min-h-11"
+                disabled={!available[asset]}
+                loading={busy === asset}
+                onClick={() => handleDownload(asset)}
+                aria-label={`Download ${label}`}
+              >
+                {busy !== asset && <Download className="h-4 w-4" aria-hidden />}
+                <span className="hidden sm:inline">Download</span>
+              </Button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -85,72 +109,76 @@ function SlideCarousel({ images }: { images: string[] }) {
   if (images.length === 0) return null;
 
   return (
-    <Card>
-      <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle>Slides</CardTitle>
-        <span className="text-sm tabular-nums text-muted-foreground">
-          {index + 1} / {images.length}
+    <section aria-labelledby="slides-title">
+      <div className="flex items-baseline justify-between gap-4 border-b border-foreground pb-3">
+        <h2 id="slides-title" className="font-display text-2xl leading-tight">
+          Slides
+        </h2>
+        <span className="nums font-mono text-xs text-muted-foreground">
+          {String(index + 1).padStart(2, "0")} / {String(images.length).padStart(2, "0")}
         </span>
-      </CardHeader>
-      <CardContent>
-        <div className="relative overflow-hidden rounded-xl border border-border bg-black/40">
+      </div>
+      <figure className="mt-5">
+        <div className="overflow-hidden rounded-lg border-2 border-foreground bg-black">
           <AnimatePresence mode="wait">
             <motion.img
               key={index}
               src={images[index]}
               alt={`Slide ${index + 1}`}
               className="aspect-video w-full object-contain"
-              initial={{ opacity: 0, x: 24 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -24 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
             />
           </AnimatePresence>
-
-          <div className="absolute inset-y-0 left-0 flex items-center pl-2">
+        </div>
+        <figcaption className="mt-3 flex items-center justify-between gap-3">
+          <span className="label-mono">
+            <span className="text-primary">Fig. 3</span> Slide {index + 1}
+          </span>
+          <span className="flex gap-2">
             <Button
-              variant="secondary"
+              variant="outline"
               size="icon"
-              className="rounded-full opacity-80"
               disabled={index === 0}
               onClick={() => setIndex((i) => i - 1)}
               aria-label="Previous slide"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-          </div>
-          <div className="absolute inset-y-0 right-0 flex items-center pr-2">
             <Button
-              variant="secondary"
+              variant="outline"
               size="icon"
-              className="rounded-full opacity-80"
               disabled={index === images.length - 1}
               onClick={() => setIndex((i) => i + 1)}
               aria-label="Next slide"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
-          </div>
-        </div>
+          </span>
+        </figcaption>
+      </figure>
 
-        <div className="scrollbar-thin mt-3 flex gap-2 overflow-x-auto pb-1">
-          {images.map((image, thumbIndex) => (
-            <button
-              key={image}
-              type="button"
-              onClick={() => setIndex(thumbIndex)}
-              className={cn(
-                "shrink-0 overflow-hidden rounded-lg border-2 transition-colors",
-                thumbIndex === index ? "border-primary" : "border-transparent opacity-60 hover:opacity-100"
-              )}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={image} alt={`Slide ${thumbIndex + 1} thumbnail`} className="h-14 w-24 object-cover" />
-            </button>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+      <div className="scrollbar-thin mt-4 flex gap-2 overflow-x-auto pb-1">
+        {images.map((image, thumbIndex) => (
+          <button
+            key={image}
+            type="button"
+            onClick={() => setIndex(thumbIndex)}
+            aria-label={`Show slide ${thumbIndex + 1}`}
+            aria-current={thumbIndex === index ? "true" : undefined}
+            className={cn(
+              "shrink-0 overflow-hidden rounded-sm border-2 transition-colors",
+              thumbIndex === index ? "border-mark" : "border-transparent opacity-60 hover:opacity-100"
+            )}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={image} alt="" className="h-14 w-24 object-cover" />
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -188,110 +216,143 @@ function Quiz({
   };
 
   return (
-    <Card id="quiz">
-      <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
-        <div>
-          <CardTitle>Check your understanding</CardTitle>
-          <CardDescription>
+    <section id="quiz" aria-labelledby="quiz-title" className="scroll-mt-24">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-foreground pb-3">
+        <div className="max-w-xl">
+          <h2 id="quiz-title" className="font-display text-2xl leading-tight">
+            Check your understanding
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Finish the quiz to record your mastery — Smart Review schedules your next revision
             automatically.
-          </CardDescription>
+          </p>
         </div>
         <Link
           href={`/dashboard/lesson/${lessonId}/play`}
-          className={cn(buttonVariants({ variant: "gradient", size: "sm" }), "shrink-0")}
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "min-h-11 shrink-0")}
         >
-          <Mountain className="h-3.5 w-3.5" /> Play as a climb
+          <Mountain className="h-3.5 w-3.5" /> Play as a game
         </Link>
-      </CardHeader>
-      <CardContent className="space-y-6">
+      </div>
+
+      <ol>
         {questions.map((quizItem, questionIndex) => {
           const picked = answers[questionIndex];
           return (
-            <div key={questionIndex}>
-              <p className="mb-3 font-medium">
-                {questionIndex + 1}. {quizItem.question}
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {quizItem.options.map((option, optionIndex) => {
-                  const answer = result?.answerKey[questionIndex];
-                  const isCorrect = graded && answer !== undefined && optionIndex === answer.correctIndex;
-                  const isPicked = picked === optionIndex;
-                  return (
-                    <button
-                      key={optionIndex}
-                      type="button"
-                      // Answers stay changeable until the quiz is submitted, and
-                      // nothing is marked right or wrong before then — otherwise
-                      // the score is decided by the first click and the answer
-                      // key is on screen while you're still answering.
-                      disabled={graded}
-                      onClick={() => setAnswers((prev) => ({ ...prev, [questionIndex]: optionIndex }))}
-                      className={cn(
-                        "rounded-xl border p-3 text-left text-sm transition-colors",
-                        !graded && isPicked && "border-primary bg-primary/10",
-                        !graded && !isPicked && "border-border hover:border-primary/60 hover:bg-muted/40",
-                        graded && isCorrect && "border-emerald-500/60 bg-emerald-500/10 text-emerald-300",
-                        graded && isPicked && !isCorrect && "border-destructive/60 bg-destructive/10 text-red-300",
-                        graded && !isPicked && !isCorrect && "border-border opacity-50"
-                      )}
-                    >
-                      {option}
-                    </button>
-                  );
-                })}
+            <li
+              key={questionIndex}
+              className="grid grid-cols-[2rem_1fr] gap-x-3 border-b border-foreground/20 py-6 sm:grid-cols-[2.5rem_1fr] sm:gap-x-4"
+            >
+              <span className="nums pt-1 font-mono text-sm text-primary">
+                {String(questionIndex + 1).padStart(2, "0")}
+              </span>
+              <div className="min-w-0">
+                <p className="text-[17px] font-medium leading-snug">{quizItem.question}</p>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {quizItem.options.map((option, optionIndex) => {
+                    const answer = result?.answerKey[questionIndex];
+                    const isCorrect = graded && answer !== undefined && optionIndex === answer.correctIndex;
+                    const isPicked = picked === optionIndex;
+                    return (
+                      <button
+                        key={optionIndex}
+                        type="button"
+                        // Answers stay changeable until the quiz is submitted, and
+                        // nothing is marked right or wrong before then — otherwise
+                        // the score is decided by the first click and the answer
+                        // key is on screen while you're still answering.
+                        disabled={graded}
+                        aria-pressed={isPicked}
+                        onClick={() => setAnswers((prev) => ({ ...prev, [questionIndex]: optionIndex }))}
+                        className={cn(
+                          "flex min-h-11 items-baseline gap-3 rounded-md border px-3 py-2.5 text-left text-sm transition-colors",
+                          !graded && isPicked && "border-foreground bg-foreground text-background",
+                          !graded && !isPicked && "border-input hover:border-foreground",
+                          graded && isCorrect && "border-accent bg-accent/10 text-foreground",
+                          graded && isPicked && !isCorrect && "border-destructive bg-destructive/[0.07] text-foreground",
+                          graded && !isPicked && !isCorrect && "border-border opacity-55"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "font-mono text-xs uppercase",
+                            !graded && isPicked ? "text-background/70" : "text-muted-foreground",
+                            graded && isCorrect && "text-accent",
+                            graded && isPicked && !isCorrect && "text-destructive"
+                          )}
+                        >
+                          {String.fromCharCode(97 + optionIndex)}.
+                        </span>
+                        <span>{option}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {graded && result && (
+                  <motion.p
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={cn(
+                      "mt-3 border-l-2 pl-3 text-sm leading-relaxed text-muted-foreground",
+                      picked === result.answerKey[questionIndex].correctIndex ? "border-accent" : "border-mark"
+                    )}
+                  >
+                    <span className="font-semibold text-foreground">
+                      {picked === result.answerKey[questionIndex].correctIndex ? "Correct — " : "Not quite — "}
+                    </span>
+                    {result.answerKey[questionIndex].explanation}
+                  </motion.p>
+                )}
               </div>
-              {graded && result && (
-                <motion.p
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-2 rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground"
-                >
-                  {picked === result.answerKey[questionIndex].correctIndex ? "Correct — " : "Not quite — "}
-                  {result.answerKey[questionIndex].explanation}
-                </motion.p>
-              )}
-            </div>
+            </li>
           );
         })}
+      </ol>
 
-        {result ? (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={cn(
-              "flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-center sm:justify-between",
-              result.passed ? "border-emerald-500/50 bg-emerald-500/10" : "border-amber-500/50 bg-amber-500/10"
-            )}
-          >
+      {result ? (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={cn(
+            "mt-6 flex flex-col gap-4 border-y-2 py-5 sm:flex-row sm:items-center sm:justify-between",
+            result.passed ? "border-accent" : "border-amber"
+          )}
+        >
+          <div className="flex items-baseline gap-5">
+            <p className={cn("nums font-display text-5xl leading-none", result.passed ? "text-accent" : "text-amber")}>
+              {result.scorePct}%
+            </p>
             <div>
-              <p className="font-semibold">
-                {result.score}/{result.total} correct ({result.scorePct}%)
-                {result.streak > 1 && ` · 🔥 ${result.streak}-day streak`}
+              <p className="nums font-medium">
+                {result.score}/{result.total} correct
+                {result.streak > 1 && (
+                  <span className="label-mono ml-2 text-amber">· {result.streak}-day streak</span>
+                )}
               </p>
-              <p className="text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {result.passed
                   ? `Locked in. Smart Review will bring this back on ${formatDate(result.nextReviewAt)} (${result.intervalDays} day${result.intervalDays === 1 ? "" : "s"}).`
                   : "Below 60% — this comes back tomorrow. A rewatch now will make it stick."}
               </p>
             </div>
-            <Button variant="outline" size="sm" onClick={retake}>
-              Retake
-            </Button>
-          </motion.div>
-        ) : (
-          <Button
-            variant="gradient"
-            className="w-full"
-            disabled={!allAnswered}
-            loading={submitQuiz.isPending}
-            onClick={finish}
-          >
-            {allAnswered ? "Finish quiz & schedule review" : "Answer every question to finish"}
+          </div>
+          <Button variant="outline" size="sm" className="min-h-11 shrink-0" onClick={retake}>
+            Retake
           </Button>
-        )}
-      </CardContent>
-    </Card>
+        </motion.div>
+      ) : (
+        <Button
+          variant="gradient"
+          size="lg"
+          className="mt-6 w-full"
+          disabled={!allAnswered}
+          loading={submitQuiz.isPending}
+          onClick={finish}
+        >
+          {allAnswered ? "Finish quiz & schedule review" : "Answer every question to finish"}
+        </Button>
+      )}
+    </section>
   );
 }
 
@@ -300,6 +361,7 @@ export function LessonDetail({ lessonId }: { lessonId: string }) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [injectedQuestion, setInjectedQuestion] = useState<{ text: string; nonce: number } | null>(null);
   const [startingVideo, setStartingVideo] = useState(false);
+  const [viewMode, setViewMode] = useState<"animated" | "board">("animated");
 
   // While the video is actively rendering, poll so the download section updates
   // itself when it's ready — the interactive lesson works meanwhile.
@@ -316,19 +378,22 @@ export function LessonDetail({ lessonId }: { lessonId: string }) {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-10 w-2/3" />
+        <Skeleton className="h-3 w-64" />
+        <Skeleton className="h-12 w-2/3" />
         <Skeleton className="aspect-video w-full" />
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24" />
-          ))}
-        </div>
+        <Skeleton className="h-6 w-1/3" />
       </div>
     );
   }
 
   if (isError || !lesson) {
-    return <p className="py-16 text-center text-muted-foreground">This lesson could not be loaded.</p>;
+    return <div className="border-y border-foreground py-12">
+        <p className="label-mono">Missing page</p>
+        <p className="mt-3 font-display text-2xl">This lesson could not be loaded.</p>
+        <Link href="/dashboard/history" className="link-ink mt-3 inline-flex min-h-11 items-center text-sm font-medium">
+          Back to your lessons
+        </Link>
+      </div>;
   }
 
   const videoUrl = staticUrl(lesson.assets.videoUrl);
@@ -364,72 +429,155 @@ export function LessonDetail({ lessonId }: { lessonId: string }) {
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <div className="mb-2 flex flex-wrap items-center gap-2">
-          <Badge variant="secondary">{lesson.subject}</Badge>
-          <Badge variant="outline">
-            {titleCase(lesson.profileSnapshot.learningStyle)} learner · {lesson.profileSnapshot.pace} pace
-          </Badge>
-          {lesson.language !== "en" && (
-            <Badge variant="outline">
-              <Languages className="h-3 w-3" /> {lessonLanguageLabel}
-            </Badge>
-          )}
-          {lesson.hasAvatar && (
-            <Badge variant="success">
-              <UserRound className="h-3 w-3" /> AI presenter
-            </Badge>
-          )}
-          {lesson.sourceFileName && (
-            <Badge variant="outline">
-              <FileText className="h-3 w-3" /> From {lesson.sourceFileName}
-            </Badge>
-          )}
-        </div>
-        <h1 className="text-2xl font-bold sm:text-3xl">{lesson.title || lesson.topic}</h1>
-        <p className="mt-2 max-w-3xl text-muted-foreground">{lesson.summary}</p>
-      </div>
+  const meta: string[] = [
+    lesson.subject,
+    `${titleCase(lesson.profileSnapshot.learningStyle)} learner · ${lesson.profileSnapshot.pace} pace`,
+    ...(lesson.language !== "en" ? [lessonLanguageLabel] : []),
+  ];
 
-      {/* Interactive lesson (primary) + tutor, side by side */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <InteractiveLesson
-            lesson={lesson}
-            currentSlide={currentSlide}
-            onSlideChange={setCurrentSlide}
-            onAskTerm={(term) =>
-              setInjectedQuestion({ text: `Explain "${term}" in simple terms.`, nonce: Date.now() })
-            }
-            ttsSpeed={ttsSpeed}
-          />
+  return (
+    <div className="space-y-12">
+      <header className="border-b-2 border-foreground pb-6">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-foreground/20 pb-2.5">
+          <p className="label-mono flex-wrap">
+            {meta.map((item, index) => (
+              <span key={item} className="inline-flex items-center gap-2">
+                {index > 0 && <span aria-hidden>·</span>}
+                <span className={index === 0 ? "text-primary" : undefined}>{item}</span>
+              </span>
+            ))}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {lesson.language !== "en" && (
+              <Badge variant="outline">
+                <Languages className="h-3 w-3" aria-hidden /> {lessonLanguageLabel}
+              </Badge>
+            )}
+            {lesson.hasAvatar && (
+              <Badge variant="success">
+                <UserRound className="h-3 w-3" aria-hidden /> AI presenter
+              </Badge>
+            )}
+            {lesson.sourceFileName && (
+              <Badge variant="outline">
+                <FileText className="h-3 w-3" aria-hidden /> From {lesson.sourceFileName}
+              </Badge>
+            )}
+          </div>
         </div>
-        <TutorChat
-          lessonId={lesson.id}
-          currentSlideIndex={currentSlide}
-          currentSlideTitle={lesson.slides[currentSlide]?.title ?? null}
-          injected={injectedQuestion}
-        />
+        <h1 className="page-title mt-6 max-w-4xl text-balance">{lesson.title || lesson.topic}</h1>
+        {lesson.summary && (
+          <p className="mt-3 max-w-3xl text-[15px] leading-relaxed text-muted-foreground sm:text-base">
+            {lesson.summary}
+          </p>
+        )}
+      </header>
+
+      {/* The lesson (primary) with its study notes + tutor beside it */}
+      <div className="grid gap-x-8 gap-y-8 lg:grid-cols-3">
+        <figure className="min-w-0 space-y-3 lg:col-span-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="label-mono">
+              <span className="text-primary">Fig. 1</span> The lesson
+            </span>
+          <div role="group" aria-label="Lesson view" className="inline-flex rounded-md border border-foreground p-0.5">
+            {(
+              [
+                ["animated", "Animated video", Film],
+                ["board", "Board", PresentationIcon],
+              ] as const
+            ).map(([mode, label, Icon]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setViewMode(mode)}
+                aria-pressed={viewMode === mode}
+                className={cn(
+                  "flex min-h-11 items-center gap-1.5 rounded-[3px] px-3 py-1.5 text-xs font-medium transition-colors",
+                  viewMode === mode ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
+          </div>
+          {viewMode === "animated" ? (
+            <AnimatedExplainer
+              lesson={lesson}
+              currentSlide={currentSlide}
+              onSlideChange={setCurrentSlide}
+              ttsSpeed={ttsSpeed}
+            />
+          ) : (
+            <InteractiveLesson
+              lesson={lesson}
+              currentSlide={currentSlide}
+              onSlideChange={setCurrentSlide}
+              onAskTerm={(term) =>
+                setInjectedQuestion({ text: `Explain "${term}" in simple terms.`, nonce: Date.now() })
+              }
+              onAskTutor={(text) => setInjectedQuestion({ text, nonce: Date.now() })}
+              ttsSpeed={ttsSpeed}
+            />
+          )}
+        </figure>
+        <LessonSidePanel lesson={lesson} currentSlide={currentSlide} injected={injectedQuestion} />
       </div>
 
       <Quiz lessonId={lesson.id} questions={lesson.quiz} />
 
       {/* Downloadable video (secondary) — renders in the background */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Downloadable video</CardTitle>
-          <CardDescription>
+      <section aria-labelledby="downloads-title" className="grid gap-x-10 gap-y-6 lg:grid-cols-12">
+        <div className="lg:col-span-4">
+          <h2 id="downloads-title" className="font-display text-2xl leading-tight">
+            Take it with you
+          </h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
             {videoReady
-              ? "Your narrated MP4 is ready — watch or download it below."
+              ? "Your narrated MP4 is ready — watch or download it here."
               : videoProcessing
                 ? "Rendering your MP4 in the background — you can keep learning above. Refresh to check."
                 : "The video for this lesson isn't available."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          </p>
+          {videoProcessing && (
+            <div className="mt-4 border-l-2 border-mark pl-3 text-sm text-muted-foreground">
+              <p className="flex items-start gap-2">
+                <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin text-primary" aria-hidden />
+                Building the video on the server — this can take a few minutes (longer if the AI
+                presenter is enabled)…
+              </p>
+              {/*
+                The server refuses to start a second render over a running one,
+                so offering "Restart" here would silently do nothing. Re-checking
+                is the action that's actually available.
+              */}
+              <button
+                onClick={() => queryClient.invalidateQueries({ queryKey: ["lesson", lessonId] })}
+                className="link-ink mt-1 inline-flex min-h-11 items-center font-medium"
+                type="button"
+              >
+                Check now
+              </button>
+            </div>
+          )}
+          {!videoReady && !videoProcessing && (
+            <div className="mt-4 space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {lesson.status.video === "failed"
+                  ? "The video render didn't finish. You can try again."
+                  : "The downloadable video hasn't been built yet."}
+              </p>
+              <Button variant="gradient" size="sm" className="min-h-11" onClick={triggerVideo} loading={startingVideo}>
+                <Film className="h-3.5 w-3.5" /> Generate video
+              </Button>
+            </div>
+          )}
+        </div>
+        <div className="min-w-0 space-y-6 lg:col-span-8">
           {videoReady && videoUrl && (
-            <div className="overflow-hidden rounded-xl">
+            <div className="overflow-hidden rounded-lg border-2 border-foreground">
               <video
                 controls
                 preload="metadata"
@@ -449,40 +597,9 @@ export function LessonDetail({ lessonId }: { lessonId: string }) {
               </video>
             </div>
           )}
-          {videoProcessing && (
-            <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-4 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              Building the video on the server — this can take a few minutes (longer if the AI
-              presenter is enabled)…
-              {/*
-                The server refuses to start a second render over a running one,
-                so offering "Restart" here would silently do nothing. Re-checking
-                is the action that's actually available.
-              */}
-              <button
-                onClick={() => queryClient.invalidateQueries({ queryKey: ["lesson", lessonId] })}
-                className="ml-auto text-primary hover:underline"
-                type="button"
-              >
-                Check now
-              </button>
-            </div>
-          )}
-          {!videoReady && !videoProcessing && (
-            <div className="flex flex-col gap-3 rounded-xl bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-muted-foreground">
-                {lesson.status.video === "failed"
-                  ? "The video render didn't finish. You can try again."
-                  : "The downloadable video hasn't been built yet."}
-              </p>
-              <Button variant="gradient" size="sm" onClick={triggerVideo} loading={startingVideo}>
-                <Film className="h-3.5 w-3.5" /> Generate video
-              </Button>
-            </div>
-          )}
           <DownloadButtons lessonId={lesson.id} available={available} />
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <SlideCarousel images={slideImages} />
     </div>

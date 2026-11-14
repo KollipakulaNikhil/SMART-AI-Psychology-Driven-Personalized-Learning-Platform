@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Check, FileText, Lock, Play, Sparkles } from "lucide-react";
+import { Check, FileText, Lock, PenLine, Play, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -58,7 +58,7 @@ export function PathDetail({ courseId }: { courseId: string }) {
             <Badge variant="outline">Goal: {course.goal}</Badge>
           )}
         </div>
-        <h1 className="text-2xl font-bold sm:text-3xl">{course.title}</h1>
+        <h1 className="page-title">{course.title}</h1>
         <p className="mt-2 max-w-3xl text-muted-foreground">{course.description}</p>
         <div className="mt-4 max-w-md space-y-1.5">
           <div className="flex justify-between text-xs text-muted-foreground">
@@ -75,7 +75,7 @@ export function PathDetail({ courseId }: { courseId: string }) {
         <Card className="border-accent/30 bg-accent/5">
           <CardContent className="p-4">
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-accent">
-              <Sparkles className="h-4 w-4" /> Added by SMART AI beyond your document
+              <Plus className="h-4 w-4" /> Added by SMART AI beyond your document
             </div>
             <ul className="space-y-1.5">
               {course.enrichment.map((line, index) => (
@@ -99,7 +99,7 @@ export function PathDetail({ courseId }: { courseId: string }) {
                 <span
                   className={cn(
                     "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold",
-                    sectionDone ? "bg-emerald-500/20 text-emerald-400" : "bg-brand-gradient text-white"
+                    sectionDone ? "bg-accent/15 text-accent" : "bg-foreground text-background"
                   )}
                 >
                   {section.index + 1}
@@ -126,19 +126,19 @@ export function PathDetail({ courseId }: { courseId: string }) {
                     >
                       <Card
                         className={cn(
-                          isActive && "border-primary/50 shadow-lg shadow-primary/10",
+                          isActive && "border-2 border-foreground",
                           isLocked && "opacity-55"
                         )}
                       >
                         <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
                           <span
                             className={cn(
-                              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold",
+                              "nums flex h-9 w-9 shrink-0 items-center justify-center rounded-sm font-mono text-sm font-medium",
                               isDone
-                                ? "bg-emerald-500/20 text-emerald-400"
+                                ? "bg-accent text-accent-foreground"
                                 : isActive
-                                  ? "bg-brand-gradient text-white"
-                                  : "bg-muted text-muted-foreground"
+                                  ? "bg-foreground text-background"
+                                  : "border border-input text-muted-foreground"
                             )}
                           >
                             {isDone ? (
@@ -154,7 +154,7 @@ export function PathDetail({ courseId }: { courseId: string }) {
                             <p
                               className={cn(
                                 "font-medium",
-                                isDone && "text-muted-foreground line-through decoration-emerald-500/40"
+                                isDone && "text-muted-foreground line-through decoration-accent/50"
                               )}
                             >
                               {module.title}
@@ -184,7 +184,7 @@ export function PathDetail({ courseId }: { courseId: string }) {
                                 href={moduleGenerateHref(course.id, module, course.language)}
                                 className={buttonVariants({ variant: isActive ? "gradient" : "outline", size: "sm" })}
                               >
-                                <Sparkles className="h-3.5 w-3.5" /> Generate lesson
+                                <PenLine className="h-3.5 w-3.5" /> Generate lesson
                               </Link>
                             )}
                             {module.status === "pending" && isLocked && (

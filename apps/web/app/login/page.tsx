@@ -17,18 +17,18 @@ export default function LoginPage() {
   }, [loading, firebaseUser, router]);
 
   return (
-    <main className="grid min-h-screen lg:grid-cols-2">
-      <div className="relative flex flex-col px-6 py-8 sm:px-12 lg:px-16">
+    <main className="grid min-h-screen lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)]">
+      <div className="relative flex flex-col px-5 py-6 sm:px-12 lg:px-16">
         <div className="flex items-center justify-between">
           <Logo href="/" />
           <ThemeToggle />
         </div>
 
-        <div className="flex flex-1 flex-col items-center justify-center py-12">
+        <div className="flex flex-1 flex-col justify-center py-12 lg:pl-4">
           <LoginCard />
         </div>
 
-        <p className="mx-auto max-w-sm text-center text-xs text-muted-foreground">
+        <p className="max-w-sm text-xs leading-relaxed text-muted-foreground lg:pl-4">
           By continuing you agree to let SMART AI store your learning profile to personalize your
           lessons.
         </p>

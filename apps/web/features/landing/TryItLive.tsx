@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Clock3, Gauge, Layers } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -31,9 +31,9 @@ interface Dial<T extends string> {
 
 function DialRow<T extends string>({ label, value, onChange, options }: Dial<T>) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      <span className="text-sm font-medium">{label}</span>
-      <div className="flex rounded-full border border-border bg-elevated p-0.5">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-foreground/20 py-3.5">
+      <span className="text-[15px] font-medium">{label}</span>
+      <div role="group" aria-label={label} className="flex rounded-md border border-foreground p-0.5">
         {options.map((option) => (
           <button
             key={option.value}
@@ -41,15 +41,15 @@ function DialRow<T extends string>({ label, value, onChange, options }: Dial<T>)
             onClick={() => onChange(option.value)}
             aria-pressed={value === option.value}
             className={cn(
-              "relative rounded-full px-3.5 py-1.5 text-sm transition-colors",
-              value === option.value ? "text-white" : "text-muted-foreground hover:text-foreground"
+              "relative min-h-11 rounded-[3px] px-3.5 text-sm font-medium transition-colors",
+              value === option.value ? "text-background" : "text-muted-foreground hover:text-foreground"
             )}
           >
             {value === option.value && (
               <motion.span
                 layoutId={`dial-${label}`}
-                transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                className="absolute inset-0 rounded-full bg-brand-gradient"
+                transition={{ type: "spring", stiffness: 520, damping: 40 }}
+                className="absolute inset-0 rounded-[3px] bg-foreground"
               />
             )}
             <span className="relative">{option.label}</span>
@@ -130,16 +130,19 @@ export function TryItLive() {
   const plan = useMemo(() => derivePlan(style, attention, level), [style, attention, level]);
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:gap-8">
+    <div className="grid border-2 border-foreground bg-card lg:grid-cols-[0.9fr_1.1fr]">
       {/* the dials */}
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-soft sm:p-7">
-        <p className="text-h3">Set the learner</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          This is what the 20-question assessment works out about you. Move it and watch the plan
-          on the right change.
+      <div className="p-5 sm:p-8">
+        <p className="label-mono">
+          <span className="text-primary">A</span> The learner
+        </p>
+        <p className="text-h3 mt-3 font-display">Set the learner</p>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          This is what the learning discovery works out about you. Change it and watch the plan
+          alongside change.
         </p>
 
-        <div className="mt-7 space-y-5">
+        <div className="mt-6 border-t border-foreground">
           <DialRow
             label="Learns best from"
             value={style}
@@ -169,43 +172,43 @@ export function TryItLive() {
           />
         </div>
 
-        <div className="mt-7 rounded-xl bg-elevated p-4">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Topic asked for</p>
-          <p className="mt-1 font-medium">“Explain quantum computing”</p>
-          <p className="mt-1 text-xs text-muted-foreground">
+        <div className="mt-7 border-l-2 border-mark pl-4">
+          <p className="label-mono">Topic asked for</p>
+          <p className="mt-1.5 font-display text-2xl italic leading-tight">“Explain quantum computing”</p>
+          <p className="mt-1.5 text-sm text-muted-foreground">
             Same three words, every time — only the learner changes.
           </p>
         </div>
       </div>
 
       {/* the resulting lesson */}
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6 shadow-lift sm:p-7">
-        <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-brand-gradient" />
-        <p className="eyebrow">Your lesson would be</p>
+      <div className="border-t-2 border-foreground p-5 sm:p-8 lg:border-l-2 lg:border-t-0">
+        <p className="label-mono">
+          <span className="text-primary">B</span> Your lesson would be
+        </p>
 
-        <div className="mt-5 grid grid-cols-3 gap-3">
+        <div className="mt-4 grid grid-cols-3 border-y border-foreground">
           {[
-            { icon: Layers, value: plan.slides, suffix: "", label: "slides", decimals: 0 },
-            { icon: Clock3, value: plan.minutes, suffix: " min", label: "long", decimals: 0 },
-            { icon: Gauge, value: plan.speed, suffix: "×", label: "narration", decimals: 1 },
-          ].map((stat) => (
-            <div key={stat.label} className="rounded-xl bg-elevated p-3.5 text-center">
-              <stat.icon className="mx-auto h-4 w-4 text-accent" />
-              <p className="mt-2 font-display text-2xl font-bold tabular-nums">
+            { value: plan.slides, suffix: "", label: "slides", decimals: 0 },
+            { value: plan.minutes, suffix: " min", label: "long", decimals: 0 },
+            { value: plan.speed, suffix: "×", label: "narration", decimals: 1 },
+          ].map((stat, index) => (
+            <div key={stat.label} className={cn("py-4", index > 0 && "border-l border-foreground/20 pl-3 sm:pl-5")}>
+              <p className="nums font-display text-3xl leading-none sm:text-4xl">
                 <AnimatedNumber value={stat.value} decimals={stat.decimals} />
-                {stat.suffix}
+                <span className="text-xl sm:text-2xl">{stat.suffix}</span>
               </p>
-              <p className="text-xs text-muted-foreground">{stat.label}</p>
+              <p className="label-mono mt-2">{stat.label}</p>
             </div>
           ))}
         </div>
 
         {/* a miniature of the deck, so density is felt and not just stated */}
-        <div className="mt-5 rounded-xl border border-border bg-elevated/60 p-4">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">A slide looks like</p>
+        <div className="mt-5 rounded-md border border-foreground/30 bg-background p-4">
+          <p className="label-mono">A slide looks like</p>
           <div className="mt-3 flex items-start gap-3">
             <div className="flex-1 space-y-2">
-              <div className="h-2.5 w-2/3 rounded-full bg-foreground/35" />
+              <div className="h-2.5 w-2/3 bg-foreground/60" />
               <AnimatePresence mode="popLayout">
                 {Array.from({ length: plan.bullets }).map((_, i) => (
                   <motion.div
@@ -215,9 +218,7 @@ export function TryItLive() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -8 }}
                     transition={{ duration: 0.22, delay: i * 0.03 }}
-                    // Light enough to read as placeholder text, dark enough to
-                    // actually see — at /12 these were invisible on the card.
-                    className="h-1.5 rounded-full bg-foreground/20"
+                    className="h-1.5 bg-foreground/25"
                     style={{ width: `${90 - i * 8}%` }}
                   />
                 ))}
@@ -230,20 +231,25 @@ export function TryItLive() {
                 height: style === "visual" ? 78 : 52,
               }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="shrink-0 rounded-lg bg-gradient-to-br from-primary/45 to-accent/45"
-            />
+              className="shrink-0 rounded-sm border border-foreground/60 bg-accent/20"
+            >
+              {/* a crossed box — the draughtsman's placeholder for "picture here" */}
+              <svg aria-hidden viewBox="0 0 10 10" preserveAspectRatio="none" className="h-full w-full text-foreground/40">
+                <path d="M0 0L10 10M10 0L0 10" stroke="currentColor" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+              </svg>
+            </motion.div>
           </div>
         </div>
 
-        <dl className="mt-5 space-y-3 text-sm">
+        <dl className="mt-5 border-t border-foreground text-sm">
           {[
             ["Imagery", plan.imagery],
             ["Examples", plan.examples],
             ["Delivery", plan.narration],
             ["Quiz", `${plan.quiz} questions at the end`],
           ].map(([label, value]) => (
-            <div key={label} className="flex gap-3">
-              <dt className="w-20 shrink-0 text-muted-foreground">{label}</dt>
+            <div key={label} className="flex gap-3 border-b border-foreground/20 py-2.5">
+              <dt className="label-mono w-20 shrink-0 pt-0.5">{label}</dt>
               <AnimatePresence mode="wait">
                 <motion.dd
                   key={value}
@@ -265,7 +271,7 @@ export function TryItLive() {
           className={cn(buttonVariants({ variant: "gradient" }), "group mt-6 w-full")}
         >
           Get my real profile
-          <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+          <ArrowRight className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-1" />
         </Link>
       </div>
     </div>

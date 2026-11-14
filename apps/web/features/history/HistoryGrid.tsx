@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLessons } from "@/hooks/useLessons";
+import { cn } from "@/lib/utils";
 import { LessonCard } from "./LessonCard";
 
 export function HistoryGrid() {
@@ -14,9 +15,13 @@ export function HistoryGrid() {
 
   if (isLoading) {
     return (
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="border-t border-foreground" aria-busy="true">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-44" />
+          <div key={i} className="border-b border-foreground/20 py-4">
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="mt-2.5 h-6 w-2/3" />
+            <Skeleton className="mt-2.5 h-3 w-48" />
+          </div>
         ))}
       </div>
     );
@@ -24,13 +29,14 @@ export function HistoryGrid() {
 
   if (!data || data.items.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border py-20 text-center">
-        <p className="text-lg font-medium">No lessons yet</p>
-        <p className="max-w-sm text-sm text-muted-foreground">
+      <div className="ruled border-y border-foreground px-1 py-16 sm:px-8" style={{ ["--rule-gap" as string]: "2.5rem" }}>
+        <p className="label-mono">Page one</p>
+        <p className="mt-3 font-display text-3xl leading-tight">No lessons yet.</p>
+        <p className="mt-2 max-w-sm text-[15px] text-muted-foreground">
           Your generated lessons, decks and videos will live here.
         </p>
-        <Link href="/dashboard/generate" className={buttonVariants({ variant: "gradient" })}>
-          <Sparkles className="h-4 w-4" /> Generate your first lesson
+        <Link href="/dashboard/generate" className={cn(buttonVariants({ variant: "gradient" }), "mt-6")}>
+          Generate your first lesson <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
     );
@@ -38,14 +44,14 @@ export function HistoryGrid() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="border-t border-foreground">
         {data.items.map((lesson, index) => (
           <LessonCard key={lesson.id} lesson={lesson} index={index} />
         ))}
       </div>
 
       {data.pages > 1 && (
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex items-center justify-between gap-3">
           <Button
             variant="outline"
             size="sm"
@@ -54,7 +60,7 @@ export function HistoryGrid() {
           >
             Previous
           </Button>
-          <span className="text-sm text-muted-foreground">
+          <span className="nums font-mono text-xs uppercase tracking-wider text-muted-foreground">
             Page {data.page} of {data.pages}
           </span>
           <Button

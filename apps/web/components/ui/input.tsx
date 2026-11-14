@@ -8,9 +8,9 @@ const Input = forwardRef<HTMLInputElement, InputProps>(({ className, type, ...pr
     type={type}
     ref={ref}
     className={cn(
-      "flex h-11 w-full rounded-xl border border-input bg-background/60 px-4 py-2 text-sm transition-colors",
+      "flex h-11 w-full rounded-md border border-input bg-card px-4 py-2 text-[15px] transition-colors",
       "placeholder:text-muted-foreground",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-transparent",
+      "hover:border-foreground/50 focus-visible:outline-none focus-visible:border-foreground focus-visible:ring-2 focus-visible:ring-ring/35",
       "disabled:cursor-not-allowed disabled:opacity-50",
       className
     )}

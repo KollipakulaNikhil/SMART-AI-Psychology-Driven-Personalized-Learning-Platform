@@ -12,7 +12,7 @@ import {
   Maximize2,
   Quote,
   ScrollText,
-  Sparkles,
+  Lightbulb,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -76,7 +76,7 @@ export function SourceCard({ source, onExplain, explaining, onPreview }: SourceC
     <Card id={`source-${source.ref}`} className="scroll-mt-24 overflow-hidden">
       <div className="grid gap-0 md:grid-cols-[220px_1fr]">
         {/* First-page snapshot — the learner sees the actual document, then clicks through. */}
-        <div className="relative border-b border-border bg-muted/40 md:border-b-0 md:border-r">
+        <div className="relative border-b border-border bg-elevated md:border-b-0 md:border-r">
           {snapshot ? (
             <button
               type="button"
@@ -90,7 +90,7 @@ export function SourceCard({ source, onExplain, explaining, onPreview }: SourceC
                 loading="lazy"
                 className="h-full w-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
               />
-              <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-gradient-to-t from-black/70 to-transparent px-3 pb-2.5 pt-8 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
+              <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-black/70 px-3 py-2.5 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100">
                 <Maximize2 className="h-3.5 w-3.5" /> View page
               </span>
             </button>
@@ -109,7 +109,7 @@ export function SourceCard({ source, onExplain, explaining, onPreview }: SourceC
               )}
             </div>
           )}
-          <span className="absolute left-2 top-2 rounded-md bg-background/90 px-1.5 py-0.5 text-[11px] font-bold text-primary shadow-soft backdrop-blur">
+          <span className="absolute left-2 top-2 rounded-md bg-background/90 px-1.5 py-0.5 text-[11px] font-bold text-primary">
             {source.ref}
           </span>
         </div>
@@ -151,9 +151,9 @@ export function SourceCard({ source, onExplain, explaining, onPreview }: SourceC
           )}
 
           {source.explanation && (
-            <div className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3.5">
+            <div className="space-y-2 rounded-md border border-primary/20 bg-primary/5 p-3.5">
               <p className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-                <Sparkles className="h-3.5 w-3.5" /> Explained for you
+                <Lightbulb className="h-3.5 w-3.5" /> Explained for you
               </p>
               <p className="text-sm">
                 <span className="font-medium">Why it matters: </span>
@@ -209,7 +209,7 @@ export function SourceCard({ source, onExplain, explaining, onPreview }: SourceC
                 className="overflow-hidden"
               >
                 {source.deepDive ? (
-                  <div className="space-y-3 rounded-xl border border-border bg-elevated p-4">
+                  <div className="space-y-3 rounded-md border border-border bg-elevated p-4">
                     <p className="text-sm font-medium leading-relaxed">{source.deepDive.plainSummary}</p>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <DeepDiveSection label="The problem" text={source.deepDive.problem} />
@@ -241,7 +241,7 @@ export function SourceCard({ source, onExplain, explaining, onPreview }: SourceC
                     )}
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 rounded-xl border border-border bg-elevated p-4 text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2 rounded-md border border-border bg-elevated p-4 text-sm text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Writing a plain-language walkthrough in your
                     style…
                   </div>

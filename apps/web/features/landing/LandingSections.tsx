@@ -3,195 +3,381 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  AudioLines,
-  BrainCircuit,
-  Check,
-  Clock3,
-  Compass,
-  Gauge,
-  Languages,
-  ListChecks,
-  MessageCircleQuestion,
-  PenLine,
-  Repeat2,
-  Sparkles,
-  Type,
-} from "lucide-react";
+import { ArrowDown, ArrowRight, ArrowUpRight } from "lucide-react";
 import { Logo } from "@/components/layout/Logo";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { buttonVariants } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import { Circled, PenArrow, PenTick, SectionLabel, Underlined } from "@/components/ui/marks";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { BoardDemo } from "./BoardDemo";
+import { LessonVideo } from "./LessonVideo";
 import { TryItLive } from "./TryItLive";
-import { VideoHero } from "./VideoHero";
 
 /**
- * Reveal-on-scroll, tuned to be felt but never waited for. `margin: "-40px"`
- * fires a little BEFORE an element reaches the viewport: with the old -80px,
- * fast scrolling outran the trigger and left visibly blank stretches of page.
+ * The home page is laid out like the opening spread of a study guide: a
+ * masthead, a contents column, numbered sections separated by rules. Motion is
+ * a single short rise on entry — nothing loops, nothing floats.
  */
-const fadeUp = {
-  initial: { opacity: 0, y: 18 },
+const rise = {
+  initial: { opacity: 0, y: 12 },
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true, margin: "-40px" },
-  transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] as const },
+  transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const },
 };
 
-/** Staggered variant for lists — index-delayed rather than hand-tuned per item. */
-const fadeUpAt = (index: number) => ({
-  ...fadeUp,
-  transition: { ...fadeUp.transition, delay: Math.min(index * 0.06, 0.4) },
-});
+/* ------------------------------------------------------------- contents --- */
+
+const SECTIONS: { number: string; label: string; href: string; note: string }[] = [
+  { number: "01", label: "How it works", href: "#how-it-works", note: "Six stages, one topic" },
+  { number: "02", label: "Try the dials", href: "#difference", note: "Change the learner" },
+  { number: "03", label: "The board", href: "#board", note: "Written as it is spoken" },
+  { number: "04", label: "What's inside", href: "#capabilities", note: "The full index" },
+];
 
 /* ------------------------------------------------------------------ nav --- */
-
-const NAV_LINKS: [label: string, href: string][] = [
-  ["How it works", "#how-it-works"],
-  ["Why it's different", "#difference"],
-  ["The board", "#board"],
-  ["What you get", "#capabilities"],
-];
 
 export function Navbar() {
   const { firebaseUser } = useAuth();
   const [scrolled, setScrolled] = useState(false);
-  // The hero (`#hero-video` in VideoHero) is permanently dark footage, not a
-  // fade-to-light wash — so the header needs light text for as long as any
-  // part of it is still behind the header, not just "has the user scrolled
-  // at all" (that flips almost immediately, while the hero is still mostly
-  // in view).
-  const [overHero, setOverHero] = useState(true);
-  const [progress, setProgress] = useState(0);
   const [activeId, setActiveId] = useState<string>("");
 
-  // Transparent+light over the hero, frosted+normal once content is behind
-  // it — so the bar never floats as a mismatched slab across the footage.
-  // Also drives the read progress bar, so one scroll listener does all of it.
   useEffect(() => {
-    const onScroll = () => {
-      const y = window.scrollY;
-      setScrolled(y > 12);
-      const heroBottom = document.getElementById("hero-video")?.getBoundingClientRect().bottom ?? 0;
-      setOverHero(heroBottom > 64); // 64px = header height (h-16)
-      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
-      setProgress(scrollable > 0 ? Math.min(100, (y / scrollable) * 100) : 0);
-    };
+    const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Highlight whichever section the reader is actually in. An observer beats
-  // measuring offsets on every scroll frame, and it stays correct when the
-  // sections resize.
+  // "You are here": the last section whose top has passed 40% of the way down
+  // the viewport. Once the reader is past the final section it stays marked,
+  // and above the first one nothing is.
   useEffect(() => {
-    const sections = NAV_LINKS.map(([, href]) => document.querySelector(href)).filter(
-      (element): element is Element => Boolean(element)
+    const sections = SECTIONS.map(({ href }) => document.querySelector<HTMLElement>(href)).filter(
+      (element): element is HTMLElement => Boolean(element)
     );
     if (sections.length === 0) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (visible) setActiveId(`#${visible.target.id}`);
-      },
-      // Bias the band toward the upper half so a section counts as "current"
-      // once its heading is comfortably on screen.
-      { rootMargin: "-20% 0px -55% 0px", threshold: [0, 0.25, 0.6] }
-    );
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const line = window.innerHeight * 0.4;
+      let current = "";
+      for (const section of sections) {
+        if (section.getBoundingClientRect().top <= line) current = `#${section.id}`;
+      }
+      setActiveId(current);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
   }, []);
 
   return (
     <header
       className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-all duration-300",
-        // While any of the (permanently dark) hero footage is still behind the
-        // header, borrow the app's dark palette the same way the hero copy
-        // does — same reasoning as the scoped `.dark` in VideoHero.
-        overHero && "dark",
-        scrolled && !overHero
-          ? "border-b border-border bg-background/80 backdrop-blur-xl"
-          : "border-b border-transparent"
+        "fixed inset-x-0 top-0 z-50 border-b bg-background transition-colors duration-200",
+        scrolled ? "border-foreground" : "border-transparent"
       )}
     >
-      <div className="container flex h-16 items-center justify-between gap-4">
+      <div className="container flex h-16 items-center justify-between gap-2 sm:gap-4">
         <Logo />
-        <nav className="hidden items-center gap-1 text-sm lg:flex">
-          {NAV_LINKS.map(([label, href]) => (
-            <a
-              key={href}
-              href={href}
-              className={cn(
-                "relative rounded-lg px-3 py-2 transition-colors",
-                activeId === href ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {activeId === href && (
-                <motion.span
-                  layoutId="nav-active"
-                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                  className="absolute inset-0 rounded-lg bg-muted"
-                />
-              )}
-              <span className="relative">{label}</span>
-            </a>
-          ))}
+        <nav aria-label="Sections" className="hidden items-center gap-7 lg:flex">
+          {SECTIONS.map(({ number, label, href }) => {
+            const active = activeId === href;
+            return (
+              <a
+                key={href}
+                href={href}
+                aria-current={active ? "true" : undefined}
+                className={cn(
+                  "group flex h-11 items-center gap-2 text-sm transition-colors",
+                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span className={cn("font-mono text-[11px]", active ? "text-primary" : "text-muted-foreground")}>
+                  {number}
+                </span>
+                <span
+                  className={cn(
+                    "border-b py-0.5 transition-colors",
+                    active ? "border-primary" : "border-transparent group-hover:border-foreground/50"
+                  )}
+                >
+                  {label}
+                </span>
+              </a>
+            );
+          })}
         </nav>
-        <Link
-          href={firebaseUser ? "/dashboard" : "/login"}
-          className={cn(buttonVariants({ variant: "gradient", size: "sm" }), "shrink-0")}
-        >
-          {firebaseUser ? "Open dashboard" : "Get started"}
-        </Link>
+        <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
+          <ThemeToggle />
+          {!firebaseUser && (
+            <Link
+              href="/login"
+              className="flex h-11 items-center px-2 text-sm font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              Sign in
+            </Link>
+          )}
+          <Link
+            href={firebaseUser ? "/dashboard" : "/login"}
+            className={cn(buttonVariants({ variant: "gradient", size: "sm" }), "h-11 px-3.5 sm:px-4")}
+          >
+            <span className="sm:hidden">{firebaseUser ? "Dashboard" : "Start"}</span>
+            <span className="hidden sm:inline">{firebaseUser ? "Open dashboard" : "Get started"}</span>
+          </Link>
+        </div>
       </div>
-
-      {/* Read progress — a quiet cue that the page has a length and an end. */}
-      <div
-        aria-hidden
-        className="h-0.5 origin-left bg-brand-gradient transition-[width] duration-150 ease-out"
-        style={{ width: `${progress}%` }}
-      />
     </header>
   );
 }
 
 /* ----------------------------------------------------------------- hero --- */
 
-/**
- * Hero is a looping ambient video background (`VideoHero`) with the copy/CTA
- * overlaid on top — simpler than the scroll-scrubbed version it replaced
- * (`ScrollVideoHero`, kept but unused): just plays, no scroll-jacking.
- */
+const FACTS: { value: string; unit: string; label: string }[] = [
+  { value: "3", unit: "min", label: "to find out how you learn" },
+  { value: "6", unit: "", label: "short activities, no wrong answers" },
+  { value: "5", unit: "", label: "languages, written and spoken" },
+  { value: "4", unit: "", label: "quiz games to finish a lesson" },
+];
+
 export function Hero() {
-  return <VideoHero />;
+  return (
+    <section className="pt-16">
+      {/* masthead line */}
+      <div className="border-b border-foreground/20">
+        <div className="container flex items-center justify-between gap-4 py-2.5">
+          <p className="label-mono">A learning notebook</p>
+          <p className="label-mono hidden sm:inline-flex" lang="mul">
+            English · हिन्दी · తెలుగు · தமிழ் · Español
+          </p>
+        </div>
+      </div>
+
+      <div className="container">
+        <div className="grid gap-x-10 gap-y-12 pb-14 pt-12 sm:pt-16 lg:grid-cols-12 lg:pb-20 lg:pt-20">
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="min-w-0 lg:col-span-8"
+          >
+            <h1 className="text-display text-balance">
+              Every lesson, written for the way{" "}
+              <Circled>
+                <em>you</em>
+              </Circled>{" "}
+              learn.
+            </h1>
+            <p className="text-lead mt-8 max-w-[38rem]">
+              SMART AI spends three minutes finding out how you take things in. Then it writes
+              each lesson for you — a narrated, animated video with a teacher on screen, a board
+              you can click, and a quiz that plays like a game.
+            </p>
+            <div className="mt-9 flex flex-wrap items-center gap-x-7 gap-y-4">
+              <Link href="/login" className={cn(buttonVariants({ variant: "gradient", size: "lg" }), "group")}>
+                Start the 3-minute discovery
+                <ArrowRight className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-1" />
+              </Link>
+              <a href="#exhibit" className="link-ink inline-flex h-11 items-center gap-1.5 text-[15px] font-medium">
+                Watch a real lesson <ArrowDown className="h-4 w-4" aria-hidden />
+              </a>
+            </div>
+          </motion.div>
+
+          {/* contents — the margin column */}
+          <motion.nav
+            aria-label="Contents"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+            className="min-w-0 lg:col-span-4 lg:border-l lg:border-foreground/20 lg:pl-8"
+          >
+            <p className="label-mono">Contents</p>
+            <ol className="mt-3 border-t border-foreground">
+              {SECTIONS.map(({ number, label, href, note }) => (
+                <li key={href} className="border-b border-foreground/20">
+                  <a href={href} className="group flex min-h-[3.25rem] items-baseline gap-3 py-3">
+                    <span className="font-mono text-xs text-primary">{number}</span>
+                    <span className="font-display text-lg leading-tight group-hover:italic">{label}</span>
+                    <span
+                      aria-hidden
+                      className="mx-1 hidden flex-1 translate-y-[-3px] border-b border-dotted border-foreground/35 sm:block"
+                    />
+                    <span className="ml-auto text-right text-xs text-muted-foreground sm:ml-0">{note}</span>
+                  </a>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+              Free to start. It is not a survey — the discovery is six small things to try.
+            </p>
+          </motion.nav>
+        </div>
+      </div>
+
+      {/* the facts, as a ruled row of figures */}
+      <div className="border-y border-foreground">
+        <dl className="container grid grid-cols-2 lg:grid-cols-4">
+          {FACTS.map(({ value, unit, label }, index) => (
+            <div
+              key={label}
+              className={cn(
+                "flex items-baseline gap-3 py-5 sm:py-6",
+                index % 2 === 1 && "border-l border-foreground/20 pl-4 sm:pl-6",
+                index >= 2 && "border-t border-foreground/20 lg:border-t-0",
+                index === 2 && "lg:border-l lg:border-foreground/20 lg:pl-6"
+              )}
+            >
+              <dd className="nums font-display text-4xl leading-none text-mark sm:text-5xl">
+                {value}
+                {unit && <span className="ml-1 font-mono text-xs uppercase tracking-wider">{unit}</span>}
+              </dd>
+              <dt className="max-w-[14ch] text-[13px] leading-snug text-muted-foreground">{label}</dt>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      {/* exhibit: the real lesson video */}
+      <div id="exhibit" className="container scroll-mt-20 py-14 sm:py-20">
+        <div className="grid gap-x-10 gap-y-8 lg:grid-cols-12">
+          <motion.div {...rise} className="min-w-0 lg:col-span-9">
+            <LessonVideo />
+          </motion.div>
+          <motion.aside {...rise} className="min-w-0 lg:col-span-3 lg:pt-10">
+            <PenArrow className="hidden lg:block" />
+            <p className="font-hand text-xl leading-snug text-primary lg:mt-2 lg:-rotate-1">
+              Nobody edited this. One line went in — “Introduction to Photosynthesis” — and this
+              came out.
+            </p>
+            <dl className="mt-6 border-t border-foreground text-sm">
+              {[
+                ["Input", "One topic line"],
+                ["Teacher", "Animated, on screen"],
+                ["Narration", "Neural voice, captioned"],
+                ["Also made", "Board, slides, quiz"],
+              ].map(([term, detail]) => (
+                <div key={term} className="flex justify-between gap-4 border-b border-foreground/20 py-2.5">
+                  <dt className="label-mono">{term}</dt>
+                  <dd className="text-right">{detail}</dd>
+                </div>
+              ))}
+            </dl>
+          </motion.aside>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* --------------------------------------------------------- how it works --- */
+
+const PIPELINE: { title: string; text: string; output: string }[] = [
+  {
+    title: "Discovery",
+    text: "Six short activities, about three minutes. You try things; nothing is marked right or wrong.",
+    output: "You, observed",
+  },
+  {
+    title: "Learning profile",
+    text: "How you take things in, your pace, your attention and what you already know become weighted traits.",
+    output: "A profile",
+  },
+  {
+    title: "The script",
+    text: "You name a topic — or upload a PDF — and the lesson is written around that exact profile.",
+    output: "A lesson plan",
+  },
+  {
+    title: "Animated video",
+    text: "A teacher on screen, animated scenes and narration in your language, at your speed.",
+    output: "Video + captions",
+  },
+  {
+    title: "Board, slides, handout",
+    text: "The same script becomes an interactive board, a slide deck and a handout you can keep.",
+    output: "Board · PPTX · PDF",
+  },
+  {
+    title: "Quiz and review",
+    text: "Finish with a quiz game. What you miss is scheduled to come back just before you would forget it.",
+    output: "A review date",
+  },
+];
+
+export function HowItWorks() {
+  return (
+    <section id="how-it-works" className="border-t border-foreground py-16 sm:py-24">
+      <div className="container grid gap-x-10 gap-y-10 lg:grid-cols-12">
+        <motion.div {...rise} className="min-w-0 lg:col-span-4">
+          <div className="lg:sticky lg:top-28">
+            <SectionLabel number="01">How it works</SectionLabel>
+            <h2 className="text-h2 mt-5 text-balance">
+              One topic in. <em>Your</em> lesson out.
+            </h2>
+            <p className="text-lead mt-5">
+              Six stages, fully automated. Every one of them is bent by what the discovery learned
+              about you.
+            </p>
+          </div>
+        </motion.div>
+
+        <ol className="min-w-0 border-t border-foreground lg:col-span-8">
+          {PIPELINE.map((step, index) => (
+            <motion.li
+              key={step.title}
+              {...rise}
+              className="grid grid-cols-[2.5rem_1fr] gap-x-4 border-b border-foreground/20 py-6 sm:grid-cols-[3.5rem_1fr_11rem] sm:gap-x-6 sm:py-7"
+            >
+              <span className="nums pt-1 font-mono text-sm text-primary">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <div>
+                <h3 className="text-h3">{step.title}</h3>
+                <p className="mt-2 max-w-prose text-[15px] leading-relaxed text-muted-foreground">
+                  {step.text}
+                </p>
+              </div>
+              <p className="label-mono col-start-2 mt-3 sm:col-start-3 sm:mt-1.5 sm:justify-end sm:text-right">
+                <span aria-hidden>→</span> {step.output}
+              </p>
+            </motion.li>
+          ))}
+        </ol>
+      </div>
+    </section>
+  );
 }
 
 /* ----------------------------------------------------------- difference --- */
 
 export function Difference() {
   return (
-    <section id="difference" className="wash-lilac py-20 sm:py-24">
+    <section id="difference" className="border-y border-foreground bg-elevated py-16 sm:py-24">
       <div className="container">
-        <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
-          <span className="eyebrow">The difference</span>
-          <h2 className="text-h2 mt-4">
-            One topic. Any mind.{" "}
-            <span className="text-gradient">A different lesson each time.</span>
-          </h2>
-          <p className="text-lead mt-4">
-            Generic AI hands everyone the same answer. Move the dials below and watch the
-            lesson rebuild itself — this is the same logic that runs on a real profile.
+        <motion.div {...rise} className="grid gap-x-10 gap-y-6 lg:grid-cols-12 lg:items-end">
+          <div className="min-w-0 lg:col-span-8">
+            <SectionLabel number="02">Try the dials</SectionLabel>
+            <h2 className="text-h2 mt-5 text-balance">
+              One topic. Any mind. <em>A different lesson each time.</em>
+            </h2>
+          </div>
+          <p className="text-lead lg:col-span-4">
+            Most tools hand everyone the same answer. Move the dials and watch the plan rewrite
+            itself — it is the same logic that runs on a real profile.
           </p>
         </motion.div>
 
-        <motion.div {...fadeUp} className="mx-auto mt-12 max-w-5xl">
+        <motion.div {...rise} className="mt-12">
           <TryItLive />
         </motion.div>
       </div>
@@ -203,157 +389,44 @@ export function Difference() {
 
 export function BoardSection() {
   return (
-    <section id="board" className="py-20 sm:py-24">
-      <div className="container">
-        <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.1fr]">
-          <motion.div {...fadeUp}>
-            <span className="eyebrow">The board</span>
-            <h2 className="text-h2 mt-4">
-              Written as it's <span className="text-gradient">spoken</span>
-            </h2>
-            <p className="text-lead mt-5">
-              Most AI lessons are slides that fade in on a timer. Ours listens to the
-              narration: every term is written at the exact moment the voice reaches it,
-              and diagrams are drawn stroke by stroke while they're explained.
-            </p>
-            <ul className="mt-7 space-y-3.5">
-              {[
-                "Terms appear on the narrator's word, not on a countdown",
-                "Diagrams draw themselves as the process is described",
-                "Click anything on the board to ask the tutor about it",
-              ].map((line) => (
-                <li key={line} className="flex items-start gap-3 text-sm">
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/10">
-                    <Check className="h-3 w-3 text-accent" />
-                  </span>
-                  {line}
-                </li>
-              ))}
-            </ul>
-          </motion.div>
-
-          <motion.div {...fadeUpAt(1)}>
-            <BoardDemo />
-          </motion.div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* --------------------------------------------------------- how it works --- */
-
-const PIPELINE = [
-  {
-    icon: BrainCircuit,
-    title: "Assessment",
-    text: "20 psychology questions — no wrong answers.",
-    tone: "bg-violet-100 text-violet-700",
-  },
-  {
-    icon: Compass,
-    title: "Learning Profile",
-    text: "Style, pace, attention and memory become weighted traits.",
-    tone: "bg-indigo-100 text-indigo-700",
-  },
-  {
-    icon: Sparkles,
-    title: "AI Script",
-    text: "The lesson is authored around that exact profile.",
-    tone: "bg-sky-100 text-sky-700",
-  },
-  {
-    icon: PenLine,
-    title: "Slides / PPT / PDF",
-    text: "Deck, handout and quiz render from the same script.",
-    tone: "bg-teal-100 text-teal-700",
-  },
-  {
-    icon: AudioLines,
-    title: "Narration",
-    text: "Neural voice, your language, matched to your pace.",
-    tone: "bg-amber-100 text-amber-700",
-  },
-  {
-    icon: MessageCircleQuestion,
-    title: "Interactive Lesson",
-    text: "Board, tutor and quiz open the moment it's ready.",
-    tone: "bg-rose-100 text-rose-700",
-  },
-];
-
-/** A flowing highlight sweeping through an otherwise static track — reads as
- *  "things are moving through this pipeline" without looping attention-grabs. */
-function FlowTrack({ vertical = false }: { vertical?: boolean }) {
-  return (
-    <div
-      aria-hidden
-      className={cn(
-        "absolute overflow-hidden bg-border",
-        vertical ? "inset-y-0 left-[27px] w-0.5" : "inset-x-[8.5%] top-[27px] h-0.5"
-      )}
-    >
-      <div
-        className={cn(
-          "absolute bg-brand-gradient",
-          vertical ? "h-1/3 w-full animate-sheen-y" : "h-full w-1/3 animate-sheen"
-        )}
-      />
-    </div>
-  );
-}
-
-export function HowItWorks() {
-  return (
-    <section id="how-it-works" className="wash-mint py-20 sm:py-24">
-      <div className="container">
-        <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
-          <span className="eyebrow">How it works</span>
-          <h2 className="text-h2 mt-4">One topic in. Your lesson out.</h2>
-          <p className="text-lead mt-4">
-            Six stages, fully automated — every one of them bent by your learning profile.
+    <section id="board" className="py-16 sm:py-24">
+      <div className="container grid items-start gap-x-10 gap-y-12 lg:grid-cols-12">
+        <motion.div {...rise} className="min-w-0 lg:col-span-5">
+          <SectionLabel number="03">The board</SectionLabel>
+          <h2 className="text-h2 mt-5 text-balance">
+            Written as it is <Underlined><em>spoken</em></Underlined>.
+          </h2>
+          <p className="text-lead mt-6">
+            Most generated lessons are slides that fade in on a timer. This one listens to the
+            narration: each term is chalked up at the moment the voice reaches it, and diagrams
+            are drawn stroke by stroke while they are explained.
           </p>
+          <ul className="mt-8 border-t border-foreground">
+            {[
+              "Terms appear on the narrator's word, not on a countdown",
+              "Diagrams draw themselves as the process is described",
+              "Click anything on the board to ask the tutor about it",
+              "Hear it in your language, keep the exam terms in English",
+            ].map((line) => (
+              <li key={line} className="flex items-start gap-3 border-b border-foreground/20 py-3.5 text-[15px]">
+                <PenTick className="mt-1 shrink-0 text-accent" />
+                {line}
+              </li>
+            ))}
+          </ul>
         </motion.div>
 
-        {/* Desktop: a horizontal pipeline with a flowing connector track. */}
-        <div className="relative mt-16 hidden lg:grid lg:grid-cols-6 lg:gap-4">
-          <FlowTrack />
-          {PIPELINE.map((step, index) => (
-            <motion.div key={step.title} {...fadeUpAt(index)} className="relative flex flex-col items-center text-center">
-              <span
-                className={cn(
-                  "relative z-10 flex h-14 w-14 items-center justify-center rounded-2xl border-4 border-background shadow-soft",
-                  step.tone
-                )}
-              >
-                <step.icon className="h-6 w-6" />
-              </span>
-              <p className="mt-4 text-sm font-semibold">{step.title}</p>
-              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{step.text}</p>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Mobile/tablet: the same pipeline, stacked with a vertical track. */}
-        <div className="relative mt-14 space-y-8 lg:hidden">
-          <FlowTrack vertical />
-          {PIPELINE.map((step, index) => (
-            <motion.div key={step.title} {...fadeUpAt(index)} className="relative flex items-start gap-4 pl-0">
-              <span
-                className={cn(
-                  "relative z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border-4 border-background shadow-soft",
-                  step.tone
-                )}
-              >
-                <step.icon className="h-6 w-6" />
-              </span>
-              <div className="pt-2.5">
-                <p className="text-sm font-semibold">{step.title}</p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{step.text}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+        <motion.figure {...rise} className="min-w-0 lg:col-span-7">
+          <BoardDemo />
+          <figcaption className="mt-3 flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+            <span className="label-mono">
+              <span className="text-primary">Fig. 2</span> The board, live
+            </span>
+            <span className="text-sm text-muted-foreground">
+              Switch the voice. It is running in your browser, not a recording.
+            </span>
+          </figcaption>
+        </motion.figure>
       </div>
     </section>
   );
@@ -363,137 +436,112 @@ export function HowItWorks() {
 
 const LANGUAGES = ["English", "हिन्दी", "తెలుగు", "தமிழ்", "Español"];
 
-const KNOBS = [
-  { icon: Type, label: "Slide density", from: "6 slides", to: "16 slides", fill: "w-2/3" },
-  { icon: Clock3, label: "Lesson length", from: "3 min", to: "30 min", fill: "w-1/2" },
-  { icon: Gauge, label: "Narration speed", from: "0.9×", to: "1.1×", fill: "w-3/4" },
-  { icon: Compass, label: "Analogy style", from: "Everyday", to: "Formal", fill: "w-2/5" },
+const KNOBS: { label: string; from: string; to: string }[] = [
+  { label: "Slide density", from: "6 slides", to: "16 slides" },
+  { label: "Lesson length", from: "3 min", to: "30 min" },
+  { label: "Narration speed", from: "0.9×", to: "1.1×" },
+  { label: "Analogy style", from: "Everyday", to: "Formal" },
 ];
 
-const FEATURES = [
+const INDEX: { title: string; text: string }[] = [
   {
-    icon: MessageCircleQuestion,
-    title: "AI Tutor",
-    text: "Click any term on the board and ask — answers are grounded in the exact slide you're on.",
-    tone: "bg-indigo-100 text-indigo-700",
+    title: "AI tutor",
+    text: "Click any term on the board and ask. Answers are grounded in the exact slide you are on.",
   },
   {
-    icon: Repeat2,
-    title: "Smart Review",
-    text: "Every quiz schedules the lesson to return exactly when you're about to forget it.",
-    tone: "bg-amber-100 text-amber-700",
+    title: "Smart review",
+    text: "Every quiz schedules the lesson to return when you are about to forget it — spaced repetition, done for you.",
   },
   {
-    icon: Compass,
-    title: "Learning Paths",
-    text: "Give it a goal and it plans a sectioned syllabus, generating each module as you unlock it.",
-    tone: "bg-violet-100 text-violet-700",
+    title: "Learning paths",
+    text: "Give it a goal and it plans a sectioned syllabus, writing each module as you unlock it.",
   },
   {
-    icon: Languages,
-    title: "Multilingual",
-    text: "Slides, narration, board and quiz — all translated, with a native neural voice.",
-    tone: "bg-teal-100 text-teal-700",
+    title: "Quiz games",
+    text: "Boss Battle, Knowledge Climb, Constellation and Bloom: four ways to be tested that do not feel like a test.",
+  },
+  {
+    title: "Teach from your PDF",
+    text: "Upload your notes or a chapter and the lesson is built from that material.",
+  },
+  {
+    title: "Research Lab",
+    text: "Describe an idea; it finds sources, captures the pages and drafts directions worth exploring.",
+  },
+  {
+    title: "Yours to keep",
+    text: "Download the deck as PPTX or PDF, the narration as audio, and the lesson as a subtitled MP4.",
   },
 ];
 
 export function Capabilities() {
   return (
-    <section id="capabilities" className="py-20 sm:py-24">
+    <section id="capabilities" className="border-t border-foreground py-16 sm:py-24">
       <div className="container">
-        <motion.div {...fadeUp} className="mx-auto max-w-2xl text-center">
-          <span className="eyebrow">What you get</span>
-          <h2 className="text-h2 mt-4">
-            Not a chatbot. A <span className="text-gradient">learning engine</span>.
+        <motion.div {...rise} className="max-w-3xl">
+          <SectionLabel number="04">What&apos;s inside</SectionLabel>
+          <h2 className="text-h2 mt-5 text-balance">
+            Not a chatbot. A <em>study</em> you can walk into.
           </h2>
-          <p className="text-lead mt-4">
-            Every knob of the lesson is tuned to the psychology of the person asking.
-          </p>
         </motion.div>
 
-        <motion.div {...fadeUp} className="mx-auto mt-14 max-w-5xl">
-          <Card>
-            <CardContent className="grid gap-8 p-6 sm:p-8 md:grid-cols-2 md:items-center">
-              <div>
-                <h3 className="text-h3">Your profile moves these dials</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Not cosmetic settings — they change what the model is asked to write.
-                </p>
-              </div>
-              <div className="space-y-4">
-                {KNOBS.map(({ icon: Icon, label, from, to, fill }) => (
-                  <div key={label} className="flex items-center gap-4">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-elevated text-accent">
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="text-sm font-medium">{label}</span>
-                        <span className="shrink-0 font-mono text-xs text-muted-foreground">
-                          {from} → {to}
-                        </span>
-                      </div>
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div className={cn("h-full rounded-full bg-brand-gradient", fill)} />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+        <div className="mt-12 grid gap-x-10 gap-y-12 lg:grid-cols-12">
+          {/* the index — a ruled list, not a card grid */}
+          <dl className="min-w-0 border-t border-foreground lg:col-span-8">
+            {INDEX.map((entry, index) => (
+              <motion.div
+                key={entry.title}
+                {...rise}
+                className="grid gap-x-6 gap-y-1 border-b border-foreground/20 py-5 sm:grid-cols-[2.5rem_13rem_1fr]"
+              >
+                <span className="nums hidden pt-1 font-mono text-xs text-muted-foreground sm:block">
+                  {String.fromCharCode(97 + index)}.
+                </span>
+                <dt className="font-display text-xl leading-snug">{entry.title}</dt>
+                <dd className="text-[15px] leading-relaxed text-muted-foreground">{entry.text}</dd>
+              </motion.div>
+            ))}
+          </dl>
 
-        <div className="mx-auto mt-6 grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {FEATURES.map((feature, index) => (
-            <motion.div key={feature.title} {...fadeUpAt(index)}>
-              <Card interactive className="group h-full">
-                <CardContent className="p-6">
-                  <motion.span
-                    whileHover={{ scale: 1.12, rotate: -6 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 15 }}
-                    className={cn(
-                      "flex h-11 w-11 items-center justify-center rounded-xl",
-                      feature.tone
-                    )}
+          {/* margin: two small reference tables */}
+          <motion.aside {...rise} className="min-w-0 space-y-10 lg:col-span-4">
+            <div>
+              <p className="label-mono">Table 1 · What your profile changes</p>
+              <table className="mt-3 w-full border-t border-foreground text-sm">
+                <tbody>
+                  {KNOBS.map(({ label, from, to }) => (
+                    <tr key={label} className="border-b border-foreground/20">
+                      <th scope="row" className="py-3 pr-3 text-left font-medium">
+                        {label}
+                      </th>
+                      <td className="nums whitespace-nowrap py-3 text-right font-mono text-xs text-muted-foreground">
+                        {from} <span className="text-primary">→</span> {to}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+                Not cosmetic settings. They change what the model is asked to write.
+              </p>
+            </div>
+
+            <div>
+              <p className="label-mono">Table 2 · Languages</p>
+              <ul className="mt-3 border-t border-foreground">
+                {LANGUAGES.map((language) => (
+                  <li
+                    key={language}
+                    className="flex items-baseline justify-between border-b border-foreground/20 py-2.5"
                   >
-                    <feature.icon className="h-5 w-5" />
-                  </motion.span>
-                  <h3 className="mt-4 text-base font-semibold">{feature.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    {feature.text}
-                  </p>
-                  {feature.title === "Multilingual" && (
-                    <div className="mt-4 flex flex-wrap gap-1.5">
-                      {LANGUAGES.map((language) => (
-                        <Badge key={language} variant="outline" className="px-2 py-0.5 text-[11px]">
-                          {language}
-                        </Badge>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+                    <span className="font-display text-lg">{language}</span>
+                    <span className="label-mono">voice + board</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </motion.aside>
         </div>
-
-        <motion.div {...fadeUp} className="mx-auto mt-4 max-w-5xl">
-          <Card>
-            <CardContent className="flex flex-col items-center gap-4 p-6 text-center sm:flex-row sm:text-left">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-rose-700">
-                <ListChecks className="h-5 w-5" />
-              </span>
-              <div>
-                <h3 className="text-base font-semibold">Yours to keep</h3>
-                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                  Download the deck as PPTX or PDF, the narration as audio, and the lesson as a
-                  subtitled MP4.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
       </div>
     </section>
   );
@@ -503,39 +551,27 @@ export function Capabilities() {
 
 export function FinalCta() {
   return (
-    <section className="pb-20 pt-2 sm:pb-24">
+    <section className="border-t border-foreground">
       <div className="container">
+        {/* A notebook page: ruled lines and one red margin. Each block of type
+            sits on its own patch of clean paper, so no rule ever crosses a word. */}
         <motion.div
-          {...fadeUp}
-          className="grain relative overflow-hidden rounded-[2rem] bg-[#0B0A17] px-6 py-16 text-center shadow-float sm:px-16"
+          {...rise}
+          className="ruled relative py-16 pl-8 sm:py-24 sm:pl-20"
+          style={{ ["--rule-gap" as string]: "2.75rem" }}
         >
-          {/* Echoes the hero's palette and glow, deliberately static and dimmer — a
-              second live particle sim here would be needless GPU cost for a moment
-              that's meant to read as calmer, not another spectacle. Soft radial
-              gradients rather than `blur()` filters: same glow, none of the
-              real-time blur compositing cost stacked on top of the grain
-              blend-mode + rounded clip this card already carries. */}
-          <div
-            aria-hidden
-            className="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(129,140,248,0.28),transparent_50%),radial-gradient(circle_at_85%_75%,rgba(167,139,250,0.2),transparent_45%),radial-gradient(circle_at_12%_90%,rgba(251,191,36,0.16),transparent_40%)]"
-          />
-          <div aria-hidden className="absolute inset-0 bg-grid [background-size:48px_48px] opacity-[0.06]" />
-          <h2 className="text-h2 relative text-white">
-            Learn your next topic the way your brain prefers
+          <span aria-hidden className="absolute inset-y-0 left-3 w-px bg-mark/70 sm:left-12" />
+          <p className="paper label-mono py-1 pr-2">Your first page</p>
+          <h2 className="paper text-display mt-5 w-fit max-w-4xl py-2 pr-3 text-balance">
+            Three minutes of discovery. Then lessons that finally <Underlined><em>fit</em></Underlined>.
           </h2>
-          <p className="relative mx-auto mt-4 max-w-xl text-white/90">
-            Two minutes of questions. Then lessons that finally fit.
-          </p>
-          <Link
-            href="/login"
-            className={cn(
-              buttonVariants({ size: "lg" }),
-              "group relative mt-9 bg-white text-slate-900 shadow-xl hover:bg-white"
-            )}
-          >
-            Start free
-            <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
-          </Link>
+          <div className="mt-10 flex flex-wrap items-center gap-x-7 gap-y-4">
+            <Link href="/login" className={cn(buttonVariants({ variant: "gradient", size: "lg" }), "group")}>
+              Start free
+              <ArrowRight className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-1" />
+            </Link>
+            <span className="paper px-2 py-1.5 text-sm text-muted-foreground">Sign in with Google or email.</span>
+          </div>
         </motion.div>
       </div>
     </section>
@@ -544,21 +580,50 @@ export function FinalCta() {
 
 export function Footer() {
   return (
-    <footer className="border-t border-border py-10">
-      <div className="container flex flex-col items-center justify-between gap-5 sm:flex-row">
-        <Logo />
-        <nav className="flex items-center gap-6 text-sm text-muted-foreground">
-          <a href="#how-it-works" className="transition-colors hover:text-foreground">
-            How it works
-          </a>
-          <a href="#capabilities" className="transition-colors hover:text-foreground">
-            Features
-          </a>
-          <Link href="/login" className="transition-colors hover:text-foreground">
-            Sign in
-          </Link>
+    <footer className="border-t-2 border-foreground pb-10 pt-12">
+      <div className="container grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-12">
+        <div className="min-w-0 lg:col-span-5">
+          <Logo />
+          <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
+            A personal learning notebook. It works out how you learn, then writes the lesson.
+          </p>
+        </div>
+
+        <nav aria-label="Footer contents" className="min-w-0 lg:col-span-4">
+          <p className="label-mono">Contents</p>
+          <ul className="mt-3 border-t border-foreground/20 text-sm">
+            {SECTIONS.map(({ number, label, href }) => (
+              <li key={href} className="border-b border-foreground/20">
+                <a href={href} className="group flex min-h-11 items-center gap-3">
+                  <span className="font-mono text-[11px] text-muted-foreground">{number}</span>
+                  <span className="group-hover:text-primary">{label}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
         </nav>
-        <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} SMART AI</p>
+
+        <nav aria-label="Account" className="min-w-0 lg:col-span-3">
+          <p className="label-mono">Begin</p>
+          <ul className="mt-3 border-t border-foreground/20 text-sm">
+            {[
+              ["Sign in", "/login"],
+              ["Start the discovery", "/login"],
+            ].map(([label, href]) => (
+              <li key={label} className="border-b border-foreground/20">
+                <Link href={href} className="group flex min-h-11 items-center justify-between gap-3">
+                  <span className="group-hover:text-primary">{label}</span>
+                  <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
+
+      <div className="container mt-12 flex flex-col gap-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <p className="font-mono uppercase tracking-[0.12em]">© {new Date().getFullYear()} SMART AI</p>
+        <p>Set in Fraunces, Hanken Grotesk and JetBrains Mono.</p>
       </div>
     </footer>
   );

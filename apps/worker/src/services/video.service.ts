@@ -99,6 +99,135 @@ async function buildProgressiveSegment(
   return duration;
 }
 
+/**
+ * Normalises one AI-generated clip to the lesson's frame (1920x1080, 30fps)
+ * and appends its own reverse, giving a seamless "ping-pong" loop: a ~5s Wan
+ * clip can then be repeated under a much longer narration without the visible
+ * jump a plain loop has where the last frame cuts back to the first.
+ */
+async function buildPingPongLoop(clipPath: string): Promise<string> {
+  // Keyed by the clip, not the segment: the teacher clip appears in every
+  // segment and only needs converting once per job.
+  const outPath = clipPath.replace(/\.mp4$/i, "") + "-loop.mp4";
+  if (fs.existsSync(outPath)) return outPath;
+  const tmpPath = outPath.replace(/\.mp4$/, ".tmp.mp4");
+  await runProcess(
+    FFMPEG,
+    [
+      "-y",
+      "-i", clipPath,
+      "-filter_complex",
+      "[0:v]fps=30,scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080,setsar=1,split[fwd][tmp];[tmp]reverse[rev];[fwd][rev]concat=n=2:v=1:a=0[v]",
+      "-map", "[v]",
+      "-an",
+      "-c:v", "libx264",
+      "-preset", "veryfast",
+      "-crf", "18",
+      "-pix_fmt", "yuv420p",
+      tmpPath,
+    ],
+    `ffmpeg ping-pong ${path.basename(outPath)}`
+  );
+  fs.renameSync(tmpPath, outPath);
+  return outPath;
+}
+
+/** The teacher shown talking in a round bubble over a concept animation. */
+export interface TeacherBubble {
+  clipPath: string;
+  /** White-on-black circle PNG, BUBBLE_SIZE square — becomes the bubble's alpha. */
+  maskPath: string;
+}
+
+export const BUBBLE_SIZE = 300;
+/** Top-left corner of the bubble: bottom-right of the frame, clear of the centred captions. */
+export const BUBBLE_POS = { x: 1560, y: 670 };
+
+/**
+ * Renders one AI-animated segment: the slide's Wan clips share the narration
+ * time equally (each looping for its share), the title/key-term overlay is
+ * composited on top, and the narration is muxed in. Encoded with the same
+ * parameters as the board segments so everything still concat-copies.
+ */
+async function buildAnimatedSegment(
+  clips: string[],
+  overlayPath: string | undefined,
+  audioLocalPath: string | undefined,
+  silentDurationSec: number,
+  outPath: string,
+  bubble?: TeacherBubble
+): Promise<number> {
+  const duration = audioLocalPath ? (await probeDurationSec(audioLocalPath)) + TAIL_PADDING : silentDurationSec;
+  const share = duration / clips.length;
+
+  const args: string[] = ["-y"];
+  for (let i = 0; i < clips.length; i++) {
+    const loopPath = await buildPingPongLoop(clips[i]);
+    // A hair over the share so rounding can never leave the last frames empty.
+    args.push("-stream_loop", "-1", "-t", (share + 0.1).toFixed(3), "-i", loopPath);
+  }
+  let nextInput = clips.length;
+  let bubbleIndex = -1;
+  if (bubble) {
+    const teacherLoop = await buildPingPongLoop(bubble.clipPath);
+    bubbleIndex = nextInput;
+    args.push("-stream_loop", "-1", "-t", (duration + 0.1).toFixed(3), "-i", teacherLoop);
+    args.push("-loop", "1", "-framerate", "30", "-i", bubble.maskPath);
+    nextInput += 2;
+  }
+  const overlayIndex = nextInput;
+  if (overlayPath) args.push("-loop", "1", "-framerate", "30", "-i", overlayPath);
+  const audioIndex = overlayIndex + (overlayPath ? 1 : 0);
+  args.push(
+    ...(audioLocalPath
+      ? ["-i", audioLocalPath]
+      : ["-f", "lavfi", "-t", duration.toFixed(3), "-i", "anullsrc=channel_layout=stereo:sample_rate=44100"])
+  );
+
+  const fadeOutStart = Math.max(0, duration - FADE).toFixed(3);
+  const chain: string[] = [];
+  let current = "0:v";
+  if (clips.length > 1) {
+    chain.push(`${clips.map((_, i) => `[${i}:v]`).join("")}concat=n=${clips.length}:v=1:a=0[base]`);
+    current = "base";
+  }
+  if (bubble) {
+    chain.push(
+      `[${bubbleIndex}:v]crop=ih:ih,scale=${BUBBLE_SIZE}:${BUBBLE_SIZE},format=yuv420p[tface]`,
+      `[${bubbleIndex + 1}:v]scale=${BUBBLE_SIZE}:${BUBBLE_SIZE},format=gray[tmask]`,
+      `[tface][tmask]alphamerge[tbubble]`,
+      `[${current}][tbubble]overlay=${BUBBLE_POS.x}:${BUBBLE_POS.y}[withteacher]`
+    );
+    current = "withteacher";
+  }
+  if (overlayPath) {
+    chain.push(`[${current}][${overlayIndex}:v]overlay=0:0[titled]`);
+    current = "titled";
+  }
+  chain.push(`[${current}]fps=30,format=yuv420p,fade=t=in:st=0:d=${FADE},fade=t=out:st=${fadeOutStart}:d=${FADE}[v]`);
+
+  args.push(
+    "-filter_complex", chain.join(";"),
+    "-map", "[v]",
+    "-map", `${audioIndex}:a`,
+    "-t", duration.toFixed(3),
+    ...(audioLocalPath ? ["-af", "apad"] : []),
+    "-c:v", "libx264",
+    "-preset", "medium",
+    "-crf", "22",
+    "-pix_fmt", "yuv420p",
+    "-r", "30",
+    "-c:a", "aac",
+    "-b:a", "160k",
+    "-ar", "44100",
+    "-ac", "2",
+    outPath
+  );
+
+  await runProcess(FFMPEG, args, `ffmpeg animated segment ${path.basename(outPath)}`);
+  return duration;
+}
+
 interface SegmentSpec {
   imagePath: string;
   audioLocalPath?: string;
@@ -234,6 +363,15 @@ export interface BoardSegmentInput {
   /** Narration Blob URL for content segments; omit for silent cover/closing. */
   audioUrl?: string;
   silentDurationSec?: number;
+  /**
+   * AI-generated clips (local scratch paths) to show instead of the board
+   * frames. The frames stay as the fallback if the animated render fails.
+   */
+  clips?: string[];
+  /** Transparent title/key-term PNG composited over the clips. */
+  overlayPath?: string;
+  /** The teacher, talking in a corner bubble over the clips. */
+  bubble?: TeacherBubble;
 }
 
 /**
@@ -269,7 +407,20 @@ export async function buildBoardVideo(
     }
 
     const outPath = path.join(workDir, `segment-${String(i + 1).padStart(2, "0")}.mp4`);
-    const duration = await buildProgressiveSegment(usableFrames, audioLocalPath, segment.silentDurationSec ?? 4, outPath);
+    const silentSec = segment.silentDurationSec ?? 4;
+    const clips = (segment.clips ?? []).filter((c) => fs.existsSync(c));
+    let duration: number | undefined;
+    if (clips.length > 0) {
+      try {
+        const bubble = segment.bubble && fs.existsSync(segment.bubble.clipPath) ? segment.bubble : undefined;
+        duration = await buildAnimatedSegment(clips, segment.overlayPath, audioLocalPath, silentSec, outPath, bubble);
+      } catch (error) {
+        logger.warn(`Animated segment ${i + 1} failed — falling back to the board frames`, {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+    duration ??= await buildProgressiveSegment(usableFrames, audioLocalPath, silentSec, outPath);
     segmentPaths.push(outPath);
     totalDuration += duration;
     logger.debug(`Board segment ${i + 1}/${segments.length} rendered (${duration.toFixed(1)}s)`);

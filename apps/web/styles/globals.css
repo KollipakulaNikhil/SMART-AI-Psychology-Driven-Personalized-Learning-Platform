@@ -5,100 +5,111 @@
 @layer base {
   :root {
     /*
-     * SMART AI light palette.
+     * SMART AI — "the well-made notebook".
      *
-     * The base is a barely-tinted lavender white rather than pure #FFF — on a
-     * light UI the page needs to sit *behind* the cards, and stark white leaves
-     * white cards with nothing to lift off. Depth here comes from shadow and a
-     * faint tint step, not from darkness.
+     * Warm paper, ink, and ONE loud colour (vermilion). Depth comes from
+     * hairline rules and layout rather than shadow. Variable names are the
+     * same ones the app has always used so every existing class keeps
+     * compiling; only the values changed.
      *
-     * The brand indigo→violet→cyan is darkened from its dark-theme values so it
-     * still clears text contrast on white.
+     *   paper      #F6F1E7      ink        #1B1A17
+     *   vermilion  #C13B15 (text-safe) / #D9431E (marks)
+     *   bottle     #1F4D3F      ochre      #A9781B
      */
-    --background: 250 40% 99%;
-    --foreground: 232 34% 12%;
+    --background: 40 45% 94%;
+    --foreground: 45 8% 10%;
 
-    /* Elevation ramp: page → card → raised */
-    --card: 0 0% 100%;
-    --card-foreground: 232 34% 12%;
-    --elevated: 250 34% 97%;
+    /* Elevation ramp: page → sheet → inset. A "card" is a slightly brighter
+       sheet of the same paper; "elevated" is a shade darker, like a tinted
+       panel printed on it. */
+    --card: 42 52% 96.5%;
+    --card-foreground: 45 8% 10%;
+    --elevated: 40 36% 90%;
 
-    --primary: 243 75% 59%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 265 80% 60%;
-    --secondary-foreground: 0 0% 100%;
-    /* Cyan has to come down a long way to be legible as text on white. */
-    --accent: 189 92% 30%;
-    --accent-foreground: 0 0% 100%;
+    /* Vermilion. Darkened a step from the mark colour so it clears AA both as
+       small text on paper and under white button text. */
+    --primary: 13 80% 42%;
+    --primary-foreground: 42 60% 97%;
+    /* The brighter vermilion — for drawn marks, underlines and large numerals
+       only, never for small text. */
+    --mark: 12 76% 48%;
 
-    --muted: 245 30% 95%;
-    --muted-foreground: 232 14% 42%;
+    /* Bottle green: the one quiet supporting colour (success, progress). */
+    --secondary: 162 43% 21%;
+    --secondary-foreground: 42 60% 97%;
+    --accent: 162 43% 21%;
+    --accent-foreground: 42 60% 97%;
 
-    --destructive: 0 72% 48%;
-    --destructive-foreground: 0 0% 100%;
+    --muted: 40 30% 88%;
+    --muted-foreground: 40 8% 33%;
 
-    --border: 244 25% 90%;
-    --input: 244 25% 88%;
-    --ring: 243 75% 59%;
+    --destructive: 350 70% 38%;
+    --destructive-foreground: 42 60% 97%;
 
-    /*
-     * The "mixed colour" washes. Sections pick one of these as a soft tint so
-     * the page moves through several hues instead of being one flat white.
-     */
-    --wash-lilac: 255 90% 97%;
-    --wash-mint: 168 70% 96%;
-    --wash-peach: 24 100% 97%;
-    --wash-sky: 205 95% 97%;
+    --border: 40 24% 79%;
+    --input: 40 20% 70%;
+    --ring: 13 80% 42%;
 
-    /* Warm amber — reserved for progress, streaks and achievement states.
-       Never used as a structural/brand colour, so it stays legible as a
-       signal in both themes. */
-    --amber: 38 92% 50%;
-    --amber-foreground: 26 40% 14%;
+    /* Legacy section tints. The page no longer changes hue section to section;
+       these stay defined (same names) and all resolve to paper tones. */
+    --wash-lilac: 40 36% 90%;
+    --wash-mint: 40 36% 90%;
+    --wash-peach: 40 36% 90%;
+    --wash-sky: 40 36% 90%;
 
-    --radius: 1rem;
+    /* Ochre — streaks and achievement only. */
+    --amber: 38 72% 38%;
+    --amber-foreground: 42 60% 97%;
+
+    --radius: 0.5rem;
+
+    /* Faint ink speckle laid over the paper. */
+    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.09 0 0 0 0 0.07 0.09 0 0 0 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   /*
-   * SMART AI dark palette.
+   * Night: the same notebook under a lamp. Warm near-black "ink paper" with
+   * cream type — deliberately not blue-black.
    *
-   * Not an inverted light theme — a deep indigo/violet-tinted graphite, so the
-   * brand hue still reads as the same product at night instead of going flat
-   * grey. Cards sit one step up from the page via a lighter graphite, not a
-   * lighter tint of the brand colour (which would fight text contrast).
+   *   ink paper  #161512      cream      #EDE6D6
+   *   vermilion  #E8552D      sage       #86BBA4      ochre  #D9A441
    */
   .dark {
-    --background: 240 28% 7%;
-    --foreground: 240 20% 94%;
+    --background: 45 10% 8%;
+    --foreground: 42 39% 88%;
 
-    --card: 240 24% 10%;
-    --card-foreground: 240 20% 94%;
-    --elevated: 240 22% 13%;
+    --card: 42 10% 10.5%;
+    --card-foreground: 42 39% 88%;
+    --elevated: 42 9% 14%;
 
-    --primary: 243 82% 70%;
-    --primary-foreground: 240 28% 8%;
-    --secondary: 265 75% 68%;
-    --secondary-foreground: 240 28% 8%;
-    --accent: 189 85% 55%;
-    --accent-foreground: 240 28% 8%;
+    --primary: 13 80% 54%;
+    --primary-foreground: 45 10% 8%;
+    --mark: 13 80% 54%;
 
-    --muted: 240 18% 16%;
-    --muted-foreground: 240 12% 65%;
+    --secondary: 154 28% 63%;
+    --secondary-foreground: 45 10% 8%;
+    --accent: 154 28% 63%;
+    --accent-foreground: 45 10% 8%;
 
-    --destructive: 0 70% 58%;
-    --destructive-foreground: 240 20% 94%;
+    --muted: 42 8% 16%;
+    --muted-foreground: 40 12% 63%;
 
-    --border: 240 18% 18%;
-    --input: 240 18% 20%;
-    --ring: 243 82% 70%;
+    --destructive: 352 72% 62%;
+    --destructive-foreground: 45 10% 8%;
 
-    --wash-lilac: 255 45% 12%;
-    --wash-mint: 168 35% 11%;
-    --wash-peach: 24 40% 11%;
-    --wash-sky: 205 45% 11%;
+    --border: 42 9% 20%;
+    --input: 42 8% 30%;
+    --ring: 13 80% 54%;
 
-    --amber: 38 95% 58%;
-    --amber-foreground: 26 60% 10%;
+    --wash-lilac: 42 9% 14%;
+    --wash-mint: 42 9% 14%;
+    --wash-peach: 42 9% 14%;
+    --wash-sky: 42 9% 14%;
+
+    --amber: 39 67% 55%;
+    --amber-foreground: 45 10% 8%;
+
+    --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.93 0 0 0 0 0.9 0 0 0 0 0.84 0.05 0 0 0 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   * {
@@ -114,6 +125,9 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    background-image: var(--grain);
+    font-feature-settings: "kern", "liga", "calt";
+    text-rendering: optimizeLegibility;
   }
 
   /*
@@ -125,20 +139,39 @@
   *::before,
   *::after {
     transition-property: background-color, border-color, color, fill, stroke, box-shadow;
-    transition-duration: 220ms;
+    transition-duration: 160ms;
     transition-timing-function: ease;
   }
 
-  /* Headings carry the display face; body copy stays on Inter for readability. */
+  /* Headings are set in the serif; body and UI stay on the grotesque. */
   h1,
   h2,
   h3,
   .font-display {
-    font-family: var(--font-display), var(--font-sans), system-ui, sans-serif;
+    font-family: var(--font-display), Georgia, "Times New Roman", serif;
+    font-optical-sizing: auto;
+    font-variation-settings: "SOFT" 30;
+    letter-spacing: -0.012em;
+  }
+
+  /* Any <em>/<i> inside a serif heading is the emphasis device — it replaces
+     what used to be gradient text. */
+  h1 em,
+  h2 em,
+  h3 em {
+    font-style: italic;
+    font-variation-settings: "SOFT" 100;
   }
 
   ::selection {
-    @apply bg-primary/40 text-foreground;
+    background-color: hsl(var(--mark) / 0.28);
+    color: hsl(var(--foreground));
+  }
+
+  /* One focus treatment everywhere a component doesn't bring its own. */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
   }
 
   /* Anything that animates in on scroll should simply be there for people who
@@ -164,64 +197,70 @@
    * stop overflowing on a phone or looking undersized on a wide monitor.
    */
   .text-display {
-    font-size: clamp(2.4rem, 1.3rem + 4.4vw, 4.5rem);
-    line-height: 1.02;
+    font-size: clamp(2.6rem, 1.1rem + 6.2vw, 6rem);
+    line-height: 0.96;
     letter-spacing: -0.035em;
-    font-weight: 700;
+    font-weight: 400;
   }
 
   .text-h2 {
-    font-size: clamp(1.875rem, 1.2rem + 2.4vw, 3rem);
-    line-height: 1.08;
+    font-size: clamp(2rem, 1.2rem + 3vw, 3.5rem);
+    line-height: 1.02;
     letter-spacing: -0.028em;
-    font-weight: 700;
+    font-weight: 400;
   }
 
   .text-h3 {
-    font-size: clamp(1.25rem, 1.05rem + 0.7vw, 1.5rem);
-    line-height: 1.2;
-    letter-spacing: -0.02em;
-    font-weight: 600;
+    font-size: clamp(1.3rem, 1.1rem + 0.8vw, 1.7rem);
+    line-height: 1.15;
+    letter-spacing: -0.018em;
+    font-weight: 500;
   }
 
   .text-lead {
     font-size: clamp(1.0625rem, 1rem + 0.35vw, 1.25rem);
-    line-height: 1.6;
+    line-height: 1.55;
     @apply text-muted-foreground;
   }
 
-  /* Small all-caps label that sits above a section heading. */
-  .eyebrow {
-    @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-accent;
+  /* Small mono label — section numbers, metadata, counters. */
+  .eyebrow,
+  .label-mono {
+    @apply inline-flex items-center gap-2 font-mono text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground sm:text-[11px] sm:tracking-[0.14em];
+  }
+
+  /* Page title used at the top of every inner (dashboard) page. */
+  .page-title {
+    font-family: var(--font-display), Georgia, serif;
+    font-size: clamp(1.9rem, 1.4rem + 1.8vw, 2.75rem);
+    line-height: 1.04;
+    letter-spacing: -0.025em;
+    font-weight: 400;
+  }
+
+  /* An inline text link: ink, with a vermilion rule that thickens on hover. */
+  .link-ink {
+    @apply text-foreground underline decoration-primary/60 decoration-1 underline-offset-4;
+    transition: text-decoration-thickness 120ms ease, color 120ms ease;
+  }
+
+  .link-ink:hover {
+    @apply text-primary decoration-primary decoration-2;
   }
 }
 
 @layer utilities {
+  /*
+   * Kept by name for old call sites; it is no longer a gradient. Emphasis is
+   * now italic serif in vermilion.
+   */
   .text-gradient {
-    /* Darker stops than the dark theme used — a gradient that looked luminous
-       on near-black turns into unreadable pastel on white. */
-    background-image: linear-gradient(
-      100deg,
-      hsl(243 75% 56%) 0%,
-      hsl(265 78% 56%) 45%,
-      hsl(189 92% 34%) 100%
-    );
-    @apply bg-clip-text text-transparent;
-    /* Descenders get clipped by background-clip without a little headroom. */
-    padding-bottom: 0.08em;
+    font-family: var(--font-display), Georgia, serif;
+    font-style: italic;
+    color: hsl(var(--primary));
   }
 
-  .dark .text-gradient {
-    /* Lighter, more saturated stops — the darkened light-theme gradient goes
-       muddy against near-black. */
-    background-image: linear-gradient(
-      100deg,
-      hsl(243 88% 76%) 0%,
-      hsl(265 85% 76%) 45%,
-      hsl(189 85% 60%) 100%
-    );
-  }
-
+  /* Used only inside the lesson board / video player, which stay dark. */
   .glass {
     @apply border border-black/[0.06] bg-white/75 backdrop-blur-xl;
   }
@@ -230,9 +269,6 @@
     @apply border-white/[0.07] bg-white/[0.05];
   }
 
-  /* Amber signal utilities — progress rings, streak badges, achievement
-     states. Kept out of the primary/accent semantic pair on purpose so it
-     never gets reached for as a structural colour. */
   .text-amber {
     color: hsl(var(--amber));
   }
@@ -241,41 +277,48 @@
     background-color: hsl(var(--amber));
   }
 
-  .glow-amber {
-    box-shadow: 0 0 0 1px hsl(var(--amber) / 0.18), 0 18px 46px -18px hsl(var(--amber) / 0.45);
+  .text-mark {
+    color: hsl(var(--mark));
   }
 
-  /* Soft colour washes — a section picks one so the page moves through several
-     hues rather than being one uninterrupted sheet of white. */
-  .wash-lilac {
-    background-image: linear-gradient(180deg, hsl(var(--wash-lilac)) 0%, hsl(var(--background)) 100%);
+  /*
+   * A patch of clean paper laid over the ruled lines, so a rule never runs
+   * through text. Carries the same grain as the page so the seam is invisible.
+   * Set --paper-bg when the ruled surface is not the page colour.
+   */
+  .paper {
+    background-color: var(--paper-bg, hsl(var(--background)));
+    background-image: var(--grain);
   }
 
-  .wash-mint {
-    background-image: linear-gradient(180deg, hsl(var(--wash-mint)) 0%, hsl(var(--background)) 100%);
+  /* Ruled notebook lines. Set --rule-gap to change the pitch. */
+  .ruled {
+    /* Paints its own surface and grain so the .paper patches inside it are
+       indistinguishable from the page between the rules. */
+    background-color: var(--paper-bg, hsl(var(--background)));
+    background-image: var(--grain), repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--rule-gap, 2rem) - 1px),
+      hsl(var(--foreground) / 0.09) calc(var(--rule-gap, 2rem) - 1px),
+      hsl(var(--foreground) / 0.09) var(--rule-gap, 2rem)
+    );
   }
 
-  .wash-peach {
-    background-image: linear-gradient(180deg, hsl(var(--wash-peach)) 0%, hsl(var(--background)) 100%);
+  /* Tabular, lining figures — for anything that is a number to be compared. */
+  .nums {
+    font-variant-numeric: tabular-nums lining-nums;
   }
 
-  .wash-sky {
-    background-image: linear-gradient(180deg, hsl(var(--wash-sky)) 0%, hsl(var(--background)) 100%);
-  }
-
-  /* Film grain. Kills the banding large gradients show on cheap panels. */
+  /* Chalk dust for the dark board surfaces. */
   .grain::after {
     content: "";
     position: absolute;
     inset: 0;
     pointer-events: none;
-    opacity: 0.03;
-    mix-blend-mode: multiply;
+    opacity: 0.04;
+    mix-blend-mode: screen;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
-
-  .glow-primary {
-    box-shadow: 0 0 0 1px hsl(243 75% 59% / 0.16), 0 18px 60px -20px hsl(243 75% 59% / 0.4);
   }
 
   /* Fades a scrolling edge out instead of cutting it with a hard line. */
@@ -286,6 +329,6 @@
 
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted)) transparent;
+    scrollbar-color: hsl(var(--border)) transparent;
   }
 }

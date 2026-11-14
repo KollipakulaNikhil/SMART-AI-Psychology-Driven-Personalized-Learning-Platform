@@ -24,6 +24,13 @@ interface BoardSlideViewProps {
   /** Real narration length, used to rescale a timeline built against an estimate. */
   durationSec: number | null;
   onTermClick: (term: string) => void;
+  /** Clicking a note or diagram box replays the narration from where it was explained. */
+  onReplayFrom?: (seconds: number) => void;
+  /**
+   * Teach-back mode: the clock is ignored and the board shows only what the
+   * learner has explained. `revealMissed` writes the rest in amber.
+   */
+  teach?: { covered: ReadonlySet<string>; revealMissed: boolean };
 }
 
 /**
@@ -56,7 +63,7 @@ function tilt(seed: number): number {
   return (((seed * 37) % 9) - 4) * 0.11;
 }
 
-interface ResolvedEvent extends BoardEvent {
+export interface ResolvedEvent extends BoardEvent {
   key: string;
 }
 
@@ -70,7 +77,7 @@ const keyOf = (kind: BoardEventKind, index: number) => `${kind}:${index}`;
  * so it is rescaled to the duration actually playing. Lessons generated before
  * timelines existed fall back to an even spread — the old behaviour.
  */
-function useBoardEvents(slide: SlideView, durationSec: number | null): ResolvedEvent[] {
+export function useBoardEvents(slide: SlideView, durationSec: number | null): ResolvedEvent[] {
   return useMemo(() => {
     const board = slide.board;
     if (!board) return [];
@@ -171,28 +178,37 @@ function DiagramBoxes({
   nodes,
   isVisible,
   isActive,
+  onPick,
+  isMissed,
 }: {
   type: "flow" | "cycle" | "compare" | "list" | "timeline" | "hierarchy" | "none";
   nodes: string[];
   isVisible: (index: number) => boolean;
   isActive: (index: number) => boolean;
+  onPick?: (index: number) => void;
+  isMissed: (index: number) => boolean;
 }) {
   const shownCount = nodes.filter((_, i) => isVisible(i)).length;
 
   const nodeBox = (node: string, i: number, extra: string) => (
-    <motion.div
+    <motion.button
       key={i}
+      type="button"
       {...writeOn}
+      onClick={() => onPick?.(i)}
+      title="Hear this part again"
       className={cn(
         boxBase,
+        "block w-full hover:border-cyan-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300",
         extra,
+        isMissed(i) && "!border-amber-400 !bg-amber-400/10 !text-amber-200",
         isActive(i) && "ring-2 ring-cyan-300/70 shadow-[0_0_22px_rgba(34,211,238,0.28)]"
       )}
       style={{ rotate: `${tilt(i + 3)}deg` }}
     >
       {isActive(i) && <ChalkMarker />}
       {node}
-    </motion.div>
+    </motion.button>
   );
 
   if (type === "compare") {
@@ -316,7 +332,7 @@ function DiagramBoxes({
   );
 }
 
-export function BoardSlideView({ slide, elapsed, durationSec, onTermClick }: BoardSlideViewProps) {
+export function BoardSlideView({ slide, elapsed, durationSec, onTermClick, onReplayFrom, teach }: BoardSlideViewProps) {
   const board = slide.board;
   const terms = board?.keyTerms ?? [];
   const notes = board?.notes ?? [];
@@ -326,6 +342,13 @@ export function BoardSlideView({ slide, elapsed, durationSec, onTermClick }: Boa
   const events = useBoardEvents(slide, durationSec);
 
   const { visible, activeKey } = useMemo(() => {
+    if (teach) {
+      const all = events.map((event) => event.key);
+      return {
+        visible: new Set(teach.revealMissed ? all : all.filter((key) => teach.covered.has(key))),
+        activeKey: null,
+      };
+    }
     const shown = new Set<string>();
     let current: string | null = null;
     for (const event of events) {
@@ -337,10 +360,17 @@ export function BoardSlideView({ slide, elapsed, durationSec, onTermClick }: Boa
       }
     }
     return { visible: shown, activeKey: current };
-  }, [events, elapsed]);
+  }, [events, elapsed, teach]);
 
   const isVisible = (kind: BoardEventKind, index: number) => visible.has(keyOf(kind, index));
   const isActive = (kind: BoardEventKind, index: number) => activeKey === keyOf(kind, index);
+  /** Teach-back, after checking: an item the learner never got to. */
+  const isMissed = (kind: BoardEventKind, index: number) =>
+    Boolean(teach?.revealMissed && !teach.covered.has(keyOf(kind, index)));
+  const replayFrom = (kind: BoardEventKind, index: number) => {
+    const event = events.find((e) => e.key === keyOf(kind, index));
+    if (event) onReplayFrom?.(event.at);
+  };
 
   const imageUrl = staticUrl(slide.imageUrl);
   const anyNoteVisible = notes.some((_, i) => isVisible("note", i));
@@ -401,7 +431,11 @@ export function BoardSlideView({ slide, elapsed, durationSec, onTermClick }: Boa
                         onClick={() => onTermClick(term)}
                         className={cn(
                           "group relative flex items-center gap-1.5 text-left text-lg transition-colors hover:text-cyan-300",
-                          isActive("term", termIndex) ? "text-cyan-200" : "text-slate-200"
+                          isMissed("term", termIndex)
+                            ? "text-amber-300"
+                            : isActive("term", termIndex)
+                              ? "text-cyan-200"
+                              : "text-slate-200"
                         )}
                         style={{
                           fontFamily: HAND_FONT,
@@ -430,18 +464,25 @@ export function BoardSlideView({ slide, elapsed, durationSec, onTermClick }: Boa
                 <AnimatePresence>
                   {notes.map((note, i) =>
                     isVisible("note", i) ? (
-                      <motion.p
+                      <motion.button
                         key={i}
+                        type="button"
                         {...writeOn}
+                        onClick={() => replayFrom("note", i)}
+                        title="Hear this part again"
                         className={cn(
-                          "relative text-sm leading-relaxed transition-colors",
-                          isActive("note", i) ? "text-slate-200" : "text-slate-400"
+                          "relative block w-full text-left text-sm leading-relaxed transition-colors hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan-300",
+                          isMissed("note", i)
+                            ? "text-amber-300"
+                            : isActive("note", i)
+                              ? "text-slate-200"
+                              : "text-slate-400"
                         )}
                         style={{ fontFamily: HAND_FONT }}
                       >
                         ✎ {note}
                         <AnimatePresence>{isActive("note", i) && <ActiveUnderline />}</AnimatePresence>
-                      </motion.p>
+                      </motion.button>
                     ) : null
                   )}
                 </AnimatePresence>
@@ -458,6 +499,8 @@ export function BoardSlideView({ slide, elapsed, durationSec, onTermClick }: Boa
                   nodes={nodes}
                   isVisible={(i) => isVisible("node", i)}
                   isActive={(i) => isActive("node", i)}
+                  onPick={(i) => replayFrom("node", i)}
+                  isMissed={(i) => isMissed("node", i)}
                 />
               </div>
             </div>

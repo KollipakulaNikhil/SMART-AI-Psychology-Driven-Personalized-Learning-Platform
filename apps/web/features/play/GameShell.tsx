@@ -67,8 +67,8 @@ const TONES: Record<
   dark: {
     card: "border-white/12 bg-white/[0.08] text-white",
     title: "text-white",
-    optionIdle: "border-white/15 bg-white/[0.06] hover:border-indigo-300/60 hover:bg-white/[0.12]",
-    optionPicked: "border-indigo-300 bg-indigo-400/30",
+    optionIdle: "border-white/15 bg-white/[0.06] hover:border-white/60 hover:bg-white/[0.12]",
+    optionPicked: "border-amber-200 bg-amber-200/20",
     optionCorrect: "border-emerald-400 bg-emerald-400/25 text-emerald-50",
     optionWrong: "border-rose-400 bg-rose-500/25 text-rose-50",
     optionDim: "border-white/10 opacity-40",
@@ -87,8 +87,8 @@ const TONES: Record<
   light: {
     card: "border-slate-900/10 bg-white/85 text-slate-900",
     title: "text-slate-900",
-    optionIdle: "border-slate-200 bg-white text-slate-800 hover:border-indigo-400 hover:bg-indigo-50",
-    optionPicked: "border-indigo-500 bg-indigo-100 text-slate-900",
+    optionIdle: "border-slate-200 bg-white text-slate-800 hover:border-slate-900 hover:bg-amber-50",
+    optionPicked: "border-slate-900 bg-amber-100 text-slate-900",
     optionCorrect: "border-emerald-500 bg-emerald-100 text-emerald-900",
     optionWrong: "border-rose-500 bg-rose-100 text-rose-900",
     optionDim: "border-slate-200 text-slate-500 opacity-50",
@@ -144,7 +144,7 @@ export function GameShell({ game, meta, children }: { game: QuizGame; meta: Game
 
   return (
     <div className="space-y-4">
-      <div className="relative overflow-hidden rounded-3xl shadow-float ring-1 ring-black/10">
+      <div className="relative overflow-hidden rounded-lg border-2 border-foreground">
         <div className="relative aspect-[1000/620] w-full select-none" style={{ backgroundColor: meta.sceneBg }}>
           {children}
 
@@ -260,7 +260,7 @@ export function GameShell({ game, meta, children }: { game: QuizGame; meta: Game
             >
               <div
                 className={cn(
-                  "rounded-2xl px-6 py-3 text-center shadow-float backdrop-blur-md",
+                  "rounded-lg px-6 py-3 text-center backdrop-blur-md",
                   boss ? "bg-rose-600/85 text-white" : "bg-black/55 text-white",
                 )}
               >
@@ -367,7 +367,7 @@ export function GameShell({ game, meta, children }: { game: QuizGame; meta: Game
               style={{ backgroundColor: meta.sceneBg }}
               className={cn(
                 "p-4 sm:p-5 md:!bg-transparent",
-                "md:absolute md:bottom-5 md:right-5 md:w-[min(560px,58%)] md:rounded-2xl md:border md:shadow-float md:backdrop-blur-xl",
+                "md:absolute md:bottom-5 md:right-5 md:w-[min(560px,58%)] md:rounded-lg md:border md:backdrop-blur-xl",
                 t.card,
                 meta.tone === "dark" ? "md:!bg-white/[0.08]" : "md:!bg-white/85",
               )}
@@ -481,7 +481,7 @@ export function GameShell({ game, meta, children }: { game: QuizGame; meta: Game
 function ReviewPanel({ game, meta }: { game: QuizGame; meta: GameMeta }) {
   const missed = game.results.map((r, i) => ({ r, q: game.questions[i], i })).filter(({ r }) => !r.correct);
   return (
-    <section className="rounded-3xl border border-border bg-card p-5 shadow-soft sm:p-6">
+    <section className="rounded-lg border-2 border-foreground bg-card p-5 sm:p-6">
       <h3 className="font-display text-lg font-semibold">
         {missed.length === 0
           ? "Flawless run — nothing to review"
@@ -494,7 +494,7 @@ function ReviewPanel({ game, meta }: { game: QuizGame; meta: GameMeta }) {
       ) : (
         <ul className="mt-3 space-y-3">
           {missed.map(({ r, q, i }) => (
-            <li key={i} className="rounded-2xl border border-border bg-background/60 p-4 text-sm">
+            <li key={i} className="rounded-md border border-border bg-background p-4 text-sm">
               <p className="font-medium">
                 <span className="mr-1.5 text-muted-foreground">Q{i + 1}.</span>
                 {q.question}
@@ -600,7 +600,7 @@ function Overlay({ children, tone }: { children: ReactNode; tone: GameTone }) {
         animate={{ y: 0, scale: 1 }}
         transition={{ type: "spring", stiffness: 220, damping: 22 }}
         className={cn(
-          "relative m-auto w-full max-w-lg overflow-hidden rounded-2xl border p-6 text-center shadow-float backdrop-blur-xl sm:p-8",
+          "relative m-auto w-full max-w-lg overflow-hidden rounded-lg border p-6 text-center backdrop-blur-xl sm:p-8",
           t.panel,
         )}
       >

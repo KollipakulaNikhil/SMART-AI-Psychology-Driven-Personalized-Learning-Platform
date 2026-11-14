@@ -147,7 +147,7 @@ export function ResearchView() {
 
   return (
     <div className="space-y-8">
-      <Card className="border-primary/30 bg-gradient-to-br from-primary/10 to-card">
+      <Card className="border-2 border-foreground">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FlaskConical className="h-5 w-5 text-primary" /> Share your research idea
@@ -184,7 +184,7 @@ export function ResearchView() {
                     type="button"
                     disabled={createMutation.isPending}
                     onClick={() => setIdea(example)}
-                    className="rounded-full border border-border px-2.5 py-0.5 transition-colors hover:border-primary/50 hover:text-foreground disabled:opacity-50"
+                    className="min-h-11 rounded-sm border border-input px-3 text-left text-foreground transition-colors hover:border-foreground disabled:opacity-50"
                   >
                     {example.length > 46 ? `${example.slice(0, 44)}…` : example}
                   </button>
@@ -226,7 +226,7 @@ export function ResearchView() {
           ))}
         </div>
       ) : !projects || projects.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border py-16 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border py-16 text-center">
           <FlaskConical className="h-8 w-8 text-muted-foreground" />
           <p className="font-medium">No research briefs yet</p>
           <p className="max-w-sm text-sm text-muted-foreground">
