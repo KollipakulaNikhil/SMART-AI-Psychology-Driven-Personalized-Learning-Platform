@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { ApiError } from "@smart-ai/core/utils/ApiError";
+import { connectDatabase } from "@smart-ai/core/config/db";
 import { requireAuthToken } from "@/lib/api/requireAuth";
+import { checkUploadRateLimit } from "@/lib/api/rateLimit";
+import { toErrorResponse } from "@/lib/api/apiHandler";
+import { SOURCE_PDF_MAX_BYTES, sourcePdfPrefix } from "@/lib/api/sourcePdf";
 
 /**
  * Authorizes a direct browser → Vercel Blob upload for a grounding PDF.
@@ -19,19 +23,36 @@ import { requireAuthToken } from "@/lib/api/requireAuth";
  * verified here exactly the way `requireAuth` verifies the header elsewhere.
  */
 export async function POST(request: Request): Promise<NextResponse> {
-  const body = (await request.json()) as HandleUploadBody;
+  try {
+    await checkUploadRateLimit(request);
+  } catch (error) {
+    return toErrorResponse(error, request);
+  }
+
+  let body: HandleUploadBody;
+  try {
+    body = (await request.json()) as HandleUploadBody;
+  } catch {
+    return NextResponse.json({ error: "Invalid upload request" }, { status: 400 });
+  }
 
   try {
     const jsonResponse = await handleUpload({
       body,
       request,
-      onBeforeGenerateToken: async (_pathname, clientPayload) => {
+      onBeforeGenerateToken: async (pathname, clientPayload) => {
         if (!clientPayload) throw ApiError.unauthorized("Missing bearer token");
+        await connectDatabase();
         const user = await requireAuthToken(clientPayload);
+        // The token only works for this user's own upload folder. Without this
+        // the browser chooses the path, and could write into anyone's.
+        if (!pathname.startsWith(sourcePdfPrefix(user)) || pathname.includes("..")) {
+          throw ApiError.forbidden("Uploads must go to your own folder");
+        }
         return {
           allowedContentTypes: ["application/pdf"],
           addRandomSuffix: true,
-          maximumSizeInBytes: 20 * 1024 * 1024,
+          maximumSizeInBytes: SOURCE_PDF_MAX_BYTES,
           tokenPayload: JSON.stringify({ userId: String(user._id) }),
         };
       },
@@ -42,11 +63,10 @@ export async function POST(request: Request): Promise<NextResponse> {
       },
     });
 
-    return NextResponse.json(jsonResponse);
+    return NextResponse.json(jsonResponse, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Upload authorization failed" },
-      { status: 400 }
-    );
+    // Only our own, deliberate messages go back to the browser.
+    const message = error instanceof ApiError ? error.message : "Upload authorization failed";
+    return NextResponse.json({ error: message }, { status: error instanceof ApiError ? error.statusCode : 400 });
   }
 }

@@ -6,7 +6,7 @@ import { tutorChat, tutorChatSchema } from "@/lib/controllers/tutor.controller";
 
 export const POST = apiHandler(async (req) => {
   const user = await requireAuth(req);
-  checkChatRateLimit(req, user.firebaseUid);
+  await checkChatRateLimit(req, user.firebaseUid);
   const body = await parseJson(tutorChatSchema, req);
   return tutorChat(user, body);
 });

@@ -1,8 +1,36 @@
 import type { NextConfig } from "next";
 import path from "path";
 
+/**
+ * Sent on every response. Deliberately no script-src/connect-src allow-list:
+ * Firebase sign-in, Blob-hosted media and the browser voice each need their own
+ * origins, and a wrong list fails as a blank page. These directives are the ones
+ * that close real holes without that risk.
+ */
+const SECURITY_HEADERS = [
+  // Never downgrade to http, including on subdomains.
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+  // No other site may frame the app (clickjacking), inject a <base>, or host its forms.
+  {
+    key: "Content-Security-Policy",
+    value: "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'",
+  },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // The microphone is used by Teach-it-back; nothing else here is used at all.
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), geolocation=(), payment=(), usb=(), microphone=(self), browsing-topics=()",
+  },
+];
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
+  async headers() {
+    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+  },
   // The monorepo root — without this Next mis-infers it in some environments.
   outputFileTracingRoot: path.join(__dirname, "../.."),
   // @smart-ai/core ships compiled CommonJS (see packages/core's build step),

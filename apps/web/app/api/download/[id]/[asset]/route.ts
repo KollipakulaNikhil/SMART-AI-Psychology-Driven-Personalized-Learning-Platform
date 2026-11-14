@@ -6,6 +6,8 @@ import { ApiError } from "@smart-ai/core/utils/ApiError";
 import { Presentation } from "@smart-ai/core/models/Presentation";
 import { logHistory } from "@smart-ai/core/services/history.service";
 import { requireAuth } from "@/lib/api/requireAuth";
+import { checkGlobalRateLimit } from "@/lib/api/rateLimit";
+import { toErrorResponse } from "@/lib/api/apiHandler";
 
 const downloadParamsSchema = z.object({
   id: z.string().refine(Types.ObjectId.isValid, "Invalid lesson id"),
@@ -38,6 +40,7 @@ function slugify(value: string): string {
  */
 export async function GET(req: Request, ctx: { params: Promise<{ id: string; asset: string }> }) {
   try {
+    await checkGlobalRateLimit(req);
     await connectDatabase();
     const user = await requireAuth(req);
     const { id, asset } = downloadParamsSchema.parse(await ctx.params);
@@ -50,7 +53,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; ass
     const url = presentation[config.field as keyof typeof presentation] as string | undefined;
     if (!url) throw ApiError.notFound(`The ${config.label} has not been generated for this lesson yet`);
 
-    const blobResponse = await fetch(url);
+    // Stored paths are written by our own pipeline, but this route streams whatever
+    // it fetches back to the caller — so it only ever fetches from our Blob store.
+    const target = new URL(url);
+    if (target.protocol !== "https:" || !target.hostname.endsWith(".public.blob.vercel-storage.com")) {
+      throw ApiError.notFound(`The ${config.label} could not be retrieved`);
+    }
+    const blobResponse = await fetch(target, { redirect: "error", cache: "no-store" });
     if (!blobResponse.ok || !blobResponse.body) {
       throw ApiError.notFound(`The ${config.label} could not be retrieved`);
     }
@@ -66,12 +75,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; ass
       headers: {
         "Content-Type": config.contentType,
         "Content-Disposition": `attachment; filename="${fileName}"`,
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch (error) {
-    const isApiError = error instanceof ApiError;
-    const status = isApiError ? error.statusCode : 500;
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ success: false, message: isApiError ? message : "Download failed" }, { status });
+    return toErrorResponse(error, req);
   }
 }

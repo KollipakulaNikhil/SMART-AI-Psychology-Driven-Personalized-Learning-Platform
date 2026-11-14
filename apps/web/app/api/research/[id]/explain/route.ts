@@ -6,7 +6,7 @@ import { explainResearchSource, explainSourceSchema, researchIdParam } from "@/l
 
 export const POST = apiHandler(async (req, ctx) => {
   const user = await requireAuth(req);
-  checkChatRateLimit(req, user.firebaseUid);
+  await checkChatRateLimit(req, user.firebaseUid);
   const { id } = await parseParams(researchIdParam, ctx.params);
   const body = await parseJson(explainSourceSchema, req);
   return explainResearchSource(user, id, body);

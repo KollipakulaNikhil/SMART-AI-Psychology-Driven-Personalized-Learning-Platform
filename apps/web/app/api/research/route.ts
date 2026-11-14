@@ -6,7 +6,7 @@ import { createResearch, createResearchSchema, listResearch } from "@/lib/contro
 
 export const POST = apiHandler(async (req) => {
   const user = await requireAuth(req);
-  checkGenerationRateLimit(req, user.firebaseUid);
+  await checkGenerationRateLimit(req, user.firebaseUid);
   const body = await parseJson(createResearchSchema, req);
   return createResearch(user, body);
 });

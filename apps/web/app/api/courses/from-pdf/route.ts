@@ -4,15 +4,17 @@ import { apiHandler } from "@/lib/api/apiHandler";
 import { requireAuth } from "@/lib/api/requireAuth";
 import { parseJson } from "@/lib/api/validate";
 import { checkGenerationRateLimit } from "@/lib/api/rateLimit";
-import { fetchArtifactBuffer, deleteArtifact } from "@smart-ai/core/storage/blob";
+import { deleteArtifact } from "@smart-ai/core/storage/blob";
+import { fetchOwnSourcePdf } from "@/lib/api/sourcePdf";
 import { createCourseFromDocument, createCourseFromPdfSchema } from "@/lib/controllers/course.controller";
 
 export const POST = apiHandler(async (req) => {
   const user = await requireAuth(req);
-  checkGenerationRateLimit(req, user.firebaseUid);
+  await checkGenerationRateLimit(req, user.firebaseUid);
   const body = await parseJson(createCourseFromPdfSchema, req);
 
-  const buffer = await fetchArtifactBuffer(body.pdfUrl);
+  // Only a PDF this user uploaded through our own upload route is ever fetched or deleted.
+  const buffer = await fetchOwnSourcePdf(body.pdfUrl, user);
   deleteArtifact(body.pdfUrl).catch(() => undefined); // ephemeral source, no need to keep it
 
   return createCourseFromDocument(user, body, { buffer, originalname: body.fileName });

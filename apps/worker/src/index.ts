@@ -10,7 +10,8 @@ async function main() {
   logger.info("Worker connected to MongoDB");
 
   const app = express();
-  app.get("/health", (_req, res) => res.json({ status: "ok", uptime: process.uptime() }));
+  app.disable("x-powered-by");
+  app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
   const server = app.listen(env.PORT, () => {
     logger.info(`Worker health endpoint listening on :${env.PORT}`);
