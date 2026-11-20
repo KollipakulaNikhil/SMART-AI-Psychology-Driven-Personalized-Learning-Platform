@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Hanken_Grotesk, JetBrains_Mono, Kalam } from "next/font/google";
 import { Providers } from "@/context/Providers";
+import { SITE_URL } from "@/lib/site";
 import "@/styles/globals.css";
 
 /** Body and UI: a humane grotesque that stays out of the serif's way. */
@@ -44,6 +45,7 @@ const kalam = Kalam({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "SMART AI — Lessons written for the way you learn",
     template: "%s · SMART AI",
