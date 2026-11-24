@@ -8,6 +8,7 @@ import { ClimbPreview } from "@/features/play/scenes/ClimbScene";
 import { ConstellationPreview } from "@/features/play/scenes/ConstellationScene";
 import { GardenPreview } from "@/features/play/scenes/GardenScene";
 import { cn } from "@/lib/utils";
+import { InkHeading } from "./Showcase";
 
 /* ---------------------------------------------------------------- shared --- */
 
@@ -30,10 +31,10 @@ function Reveal({ children, className, delay = 0 }: { children: React.ReactNode;
 function SectionHead({ title, italic, after = ".", lead }: { title: string; italic: string; after?: string; lead: string }) {
   return (
     <Reveal className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4">
-      <h2 className="font-display text-4xl tracking-tight sm:text-[3.25rem] sm:leading-[1.05]">
-        {title} <em>{italic}</em>
-        {after}
-      </h2>
+      <InkHeading
+        text={`${title} *${italic}*${after}`}
+        className="font-display text-4xl tracking-tight sm:text-[3.25rem] sm:leading-[1.05]"
+      />
       <p className="max-w-sm text-[15px] leading-relaxed text-muted-foreground">{lead}</p>
     </Reveal>
   );
@@ -591,26 +592,18 @@ const FIGURES: { value: number; suffix?: string; label: string }[] = [
   { value: 4, label: "quiz games to finish a lesson" },
 ];
 
-export function Numbers() {
+/** The four headline figures, counting up as they arrive. */
+export function Figures() {
   return (
-    <section className="border-y border-foreground/10 py-16 sm:py-20">
-      <div className="container">
-        <Reveal>
-          <h2 className="font-display text-3xl tracking-tight sm:text-4xl">
-            By the <em>numbers</em>.
-          </h2>
+    <dl className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4">
+      {FIGURES.map((f, i) => (
+        <Reveal key={f.label} delay={i * 0.08} className="border-l border-foreground/15 pl-5">
+          <dd className="font-display text-5xl leading-none tracking-tight sm:text-6xl">
+            <CountUp to={f.value} suffix={f.suffix} />
+          </dd>
+          <dt className="mt-3 max-w-[14rem] text-[14px] leading-snug text-muted-foreground">{f.label}</dt>
         </Reveal>
-        <dl className="mt-10 grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-4">
-          {FIGURES.map((f, i) => (
-            <Reveal key={f.label} delay={i * 0.08} className="border-l border-foreground/15 pl-5">
-              <dd className="font-display text-5xl leading-none tracking-tight sm:text-6xl">
-                <CountUp to={f.value} suffix={f.suffix} />
-              </dd>
-              <dt className="mt-3 max-w-[14rem] text-[14px] leading-snug text-muted-foreground">{f.label}</dt>
-            </Reveal>
-          ))}
-        </dl>
-      </div>
-    </section>
+      ))}
+    </dl>
   );
 }
