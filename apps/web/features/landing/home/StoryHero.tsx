@@ -5,10 +5,10 @@ import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "framer-
 import { Phone, PHONE_SCREENS } from "./PhoneScreens";
 
 /**
- * The opening story. The section is several screens tall; its inner stage is
- * sticky, and how far you have scrolled through picks the step. The verbs
- * ride a large arc on the left, the phone shows that step, and a handwritten
- * margin note explains it.
+ * The story after the hero. The section is several screens tall; its inner
+ * stage is sticky, and how far you have scrolled through picks the step. The
+ * verbs ride a large arc on the left, the phone (dead centre) shows that step,
+ * and a handwritten margin note explains it.
  */
 
 const STEPS: { verb: string; note: [string, string]; detail: string; status: string }[] = [
@@ -50,22 +50,27 @@ const STEPS: { verb: string; note: [string, string]; detail: string; status: str
   },
 ];
 
-const ARC_RADIUS = 760;
-const ARC_STEP_DEG = 11;
-/** Where the active verb's dot sits, in px from the left edge. */
-const ARC_X = 130;
+const ARC_RADIUS = 720;
+const ARC_STEP_DEG = 12;
+/** Where the active verb's dot sits, in px from the container's left edge. */
+const ARC_X = 24;
+/** Scroll distance per step, in viewport heights. */
+const STEP_VH = 55;
 
-function VerbArc({ active }: { active: number }) {
+function VerbArc({ active, onPick }: { active: number; onPick: (i: number) => void }) {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 hidden w-[34%] lg:block">
-      {/* the dashed arc itself */}
-      {/* centre sits ARC_RADIUS left of the active verb, so the arc runs through every verb's dot */}
+    <div
+      className="absolute inset-y-0 left-0 hidden w-[30%] lg:block"
+      // fade the arc out towards the top and bottom so it never crowds the nav
+      style={{ maskImage: "linear-gradient(transparent, #000 22%, #000 78%, transparent)" }}
+    >
       <div
-        className="absolute rounded-full border border-dashed border-foreground/20"
+        aria-hidden
+        className="absolute rounded-full border border-dashed border-foreground/15"
         style={{
           width: ARC_RADIUS * 2,
           height: ARC_RADIUS * 2,
-          left: ARC_X + 2 - ARC_RADIUS * 2,
+          left: ARC_X + 3 - ARC_RADIUS * 2,
           top: `calc(50% - ${ARC_RADIUS}px)`,
         }}
       />
@@ -76,21 +81,33 @@ function VerbArc({ active }: { active: number }) {
         const y = Math.sin(angle) * ARC_RADIUS;
         const distance = Math.abs(offset);
         return (
-          <motion.div
+          <motion.button
             key={step.verb}
+            type="button"
+            tabIndex={-1}
+            aria-hidden
+            onClick={() => onPick(i)}
             className="absolute left-0 top-1/2 flex items-center gap-5 whitespace-nowrap"
             initial={false}
             animate={{
               x: Math.round(x),
-              y: Math.round(y - 24),
+              y: Math.round(y - 22),
               rotate: offset * ARC_STEP_DEG,
-              opacity: distance === 0 ? 1 : distance === 1 ? 0.42 : distance === 2 ? 0.2 : 0,
+              opacity: distance === 0 ? 1 : distance === 1 ? 0.35 : distance === 2 ? 0.14 : 0,
             }}
-            transition={{ type: "spring", stiffness: 120, damping: 22 }}
+            transition={{ type: "spring", stiffness: 90, damping: 20, mass: 0.9 }}
           >
-            <span className={distance === 0 ? "h-1.5 w-1.5 bg-mark" : "h-1 w-1 bg-foreground/30"} />
-            <span className="font-display text-[2.6rem] leading-none tracking-tight">{step.verb}</span>
-          </motion.div>
+            <motion.span
+              className="block rounded-full"
+              initial={false}
+              animate={{
+                width: distance === 0 ? 7 : 4,
+                height: distance === 0 ? 7 : 4,
+                backgroundColor: distance === 0 ? "hsl(var(--mark))" : "hsl(var(--foreground) / 0.3)",
+              }}
+            />
+            <span className="font-display text-[2.75rem] leading-none tracking-tight">{step.verb}</span>
+          </motion.button>
         );
       })}
     </div>
@@ -102,18 +119,18 @@ function MarginNote({ step }: { step: (typeof STEPS)[number] }) {
     <AnimatePresence mode="wait">
       <motion.div
         key={step.verb}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.3 }}
-        className="max-w-[16rem]"
+        initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
+        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        exit={{ opacity: 0, y: -12, filter: "blur(4px)" }}
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        className="max-w-[17rem]"
       >
-        <p className="font-hand text-[1.55rem] leading-[1.15] text-amber">
+        <p className="font-hand text-[1.6rem] leading-[1.15] text-amber">
           {step.note[0]}
           <br />
           {step.note[1]}
         </p>
-        <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">{step.detail}</p>
+        <p className="mt-2.5 text-[15px] leading-relaxed text-muted-foreground">{step.detail}</p>
       </motion.div>
     </AnimatePresence>
   );
@@ -122,10 +139,30 @@ function MarginNote({ step }: { step: (typeof STEPS)[number] }) {
 /** The pen line from the phone's edge to the note. */
 function Pointer() {
   return (
-    <svg aria-hidden viewBox="0 0 120 60" className="absolute -left-[118px] -top-8 hidden h-[60px] w-[120px] lg:block">
-      <path d="M118 8 C 70 0, 30 10, 6 46" fill="none" stroke="hsl(var(--amber))" strokeWidth="1.6" strokeLinecap="round" />
-      <path d="M3 34 L6 47 L18 42" fill="none" stroke="hsl(var(--amber))" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    <svg aria-hidden viewBox="0 0 110 56" className="absolute -left-[104px] -top-9 h-[56px] w-[110px]">
+      <path d="M108 6 C 66 -2, 26 10, 6 44" fill="none" stroke="hsl(var(--amber))" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M3 32 L6 45 L18 40" fill="none" stroke="hsl(var(--amber))" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+function PhoneStage({ active, step }: { active: number; step: (typeof STEPS)[number] }) {
+  const Screen = PHONE_SCREENS[active];
+  return (
+    <Phone status={step.status}>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={active}
+          className="h-full"
+          initial={{ opacity: 0, y: 14, filter: "blur(3px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, y: -10, filter: "blur(3px)" }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <Screen />
+        </motion.div>
+      </AnimatePresence>
+    </Phone>
   );
 }
 
@@ -135,57 +172,37 @@ export function StoryHero() {
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
 
   useMotionValueEvent(scrollYProgress, "change", (progress) => {
-    const next = Math.min(STEPS.length - 1, Math.floor(progress * STEPS.length));
+    const next = Math.min(STEPS.length - 1, Math.max(0, Math.floor(progress * STEPS.length)));
     setActive((current) => (current === next ? current : next));
   });
 
+  /** Scroll to the middle of step i's slice of the section. */
+  const pick = (i: number) => {
+    const section = ref.current;
+    if (!section) return;
+    const travel = section.offsetHeight - window.innerHeight;
+    const top = section.getBoundingClientRect().top + window.scrollY + ((i + 0.5) / STEPS.length) * travel;
+    window.scrollTo({ top, behavior: "smooth" });
+  };
+
   const step = STEPS[active];
-  const Screen = PHONE_SCREENS[active];
 
   return (
-    <section ref={ref} id="story" aria-label="What SMART AI does" style={{ height: `${STEPS.length * 70 + 40}vh` }}>
+    <section
+      ref={ref}
+      id="story"
+      aria-label="What SMART AI does"
+      className="relative scroll-mt-16"
+      style={{ height: `calc(${STEPS.length * STEP_VH}vh + 100svh)` }}
+    >
       <div className="sticky top-16 h-[calc(100svh-4rem)] overflow-hidden">
-        <h1 className="sr-only">SMART AI learns how you learn, then writes, explains, draws, quizzes and remembers.</h1>
-        <VerbArc active={active} />
-
-        <div className="container relative grid h-full items-center gap-6 lg:grid-cols-[34%_auto_1fr]">
-          <div className="hidden lg:block" />
-
-          {/* small screens: the current verb sits above the phone */}
-          <div className="flex flex-col items-center gap-4 pt-6 lg:hidden">
-            <AnimatePresence mode="wait">
-              <motion.p
-                key={step.verb}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                className="font-display text-4xl"
-              >
-                {step.verb}
-              </motion.p>
-            </AnimatePresence>
+        {/* desktop: verbs on the arc, phone dead centre, note to its right */}
+        <div className="container relative hidden h-full lg:block">
+          <VerbArc active={active} onPick={pick} />
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <PhoneStage active={active} step={step} />
           </div>
-
-          <div className="flex justify-center">
-            <div className="-mb-[123px] origin-top scale-[0.78] sm:-mb-[56px] sm:scale-90 lg:mb-0 lg:scale-100">
-              <Phone status={step.status}>
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={active}
-                    className="h-full"
-                    initial={{ opacity: 0, filter: "blur(4px)" }}
-                    animate={{ opacity: 1, filter: "blur(0px)" }}
-                    exit={{ opacity: 0, filter: "blur(4px)" }}
-                    transition={{ duration: 0.25 }}
-                  >
-                    <Screen />
-                  </motion.div>
-                </AnimatePresence>
-              </Phone>
-            </div>
-          </div>
-
-          <div className="relative flex justify-center pb-10 text-center lg:block lg:pb-0 lg:pl-28 lg:text-left">
+          <div className="absolute top-1/2 -translate-y-[60%]" style={{ left: "calc(50% + 196px)" }}>
             <div className="relative">
               <Pointer />
               <MarginNote step={step} />
@@ -193,15 +210,46 @@ export function StoryHero() {
           </div>
         </div>
 
-        {/* step dots */}
-        <ol aria-hidden className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-1.5">
+        {/* small screens: verb, phone, note — stacked */}
+        <div className="flex h-full flex-col items-center justify-center gap-3 px-6 lg:hidden">
+          <AnimatePresence mode="wait">
+            <motion.p
+              key={step.verb}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="font-display text-4xl"
+            >
+              {step.verb}
+            </motion.p>
+          </AnimatePresence>
+          <div className="-mb-[123px] origin-top scale-[0.78] sm:-mb-[56px] sm:scale-90">
+            <PhoneStage active={active} step={step} />
+          </div>
+          <div className="mt-2 text-center">
+            <MarginNote step={step} />
+          </div>
+        </div>
+
+        {/* step dots — also a way to jump */}
+        <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-1">
           {STEPS.map((s, i) => (
-            <li
+            <button
               key={s.verb}
-              className={`h-1.5 rounded-full transition-all duration-300 ${i === active ? "w-5 bg-foreground" : "w-1.5 bg-foreground/25"}`}
-            />
+              type="button"
+              onClick={() => pick(i)}
+              aria-label={`Show step ${i + 1}: ${s.verb.replace(".", "")}`}
+              aria-current={i === active ? "step" : undefined}
+              className="group grid h-6 place-items-center px-0.5"
+            >
+              <span
+                className={`block h-1.5 rounded-full transition-all duration-300 ${
+                  i === active ? "w-6 bg-foreground" : "w-1.5 bg-foreground/25 group-hover:bg-foreground/50"
+                }`}
+              />
+            </button>
           ))}
-        </ol>
+        </div>
       </div>
     </section>
   );

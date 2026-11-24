@@ -148,24 +148,32 @@ export function MoreThan() {
   }, [paused]);
 
   return (
-    <section id="more" className="scroll-mt-16 bg-elevated py-20 sm:py-28">
+    <section id="more" className="scroll-mt-16 bg-elevated py-24 sm:py-32">
       <div className="container">
-        <h2 className="font-display text-4xl tracking-tight sm:text-5xl">
-          More than a <em>video</em>.
-        </h2>
-        <div
-          className="mt-10 flex flex-col gap-3 md:h-[300px] md:flex-row"
-          onMouseLeave={() => setPaused(false)}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-wrap items-end justify-between gap-4"
         >
+          <h2 className="font-display text-4xl tracking-tight sm:text-[3.25rem]">
+            More than a <em>video</em>.
+          </h2>
+          <p className="max-w-xs text-[15px] text-muted-foreground">
+            Every lesson comes with the pieces around it — so it sticks.
+          </p>
+        </motion.div>
+
+        <div className="mt-12 flex flex-col gap-3 md:h-[320px] md:flex-row" onMouseLeave={() => setPaused(false)}>
           {CARDS.map((card, i) => {
             const open = i === active;
             const Icon = card.icon;
             const Art = card.art;
             return (
-              <motion.button
+              <button
                 key={card.title}
                 type="button"
-                layout
                 onMouseEnter={() => {
                   setPaused(true);
                   setActive(i);
@@ -173,33 +181,50 @@ export function MoreThan() {
                 onFocus={() => setActive(i)}
                 onClick={() => setActive(i)}
                 aria-expanded={open}
-                transition={{ type: "spring", stiffness: 260, damping: 30 }}
+                // flex-grow animates smoothly in CSS — no layout re-measuring, no text jitter
+                style={{ flexGrow: open ? 2.3 : 1 }}
                 className={cn(
-                  "relative flex min-w-0 flex-col overflow-hidden rounded-2xl border p-5 text-left transition-colors",
+                  "relative flex min-h-[180px] min-w-0 basis-0 flex-col overflow-hidden rounded-[20px] border p-6 text-left",
+                  "transition-[flex-grow,background-color,box-shadow,border-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   open
-                    ? "border-foreground/10 bg-card shadow-float md:flex-[2.4]"
-                    : "border-transparent bg-card/55 hover:bg-card/80 md:flex-1"
+                    ? "border-foreground/10 bg-card shadow-float"
+                    : "border-foreground/[0.06] bg-card/50 hover:bg-card/75"
                 )}
               >
-                <AnimatePresence initial={false}>
-                  {open && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ delay: 0.12 }}
-                      className="mb-5 max-w-sm"
-                    >
-                      <Art />
-                    </motion.div>
+                <span
+                  className={cn(
+                    "grid h-9 w-9 place-items-center rounded-xl border border-foreground/10 bg-background transition-opacity duration-300",
+                    open && "md:opacity-0"
                   )}
-                </AnimatePresence>
-                <div className="mt-auto">
-                  {!open && <Icon className="mb-3 h-5 w-5 text-amber" aria-hidden />}
-                  <p className="font-display text-xl leading-snug">{card.title}</p>
-                  {open && <p className="mt-1.5 text-sm text-muted-foreground">{card.detail}</p>}
+                >
+                  <Icon className="h-4 w-4 text-amber" aria-hidden />
+                </span>
+
+                {/* the illustration sits in the card's upper half; fades in once the card has widened */}
+                <div
+                  className={cn(
+                    "pointer-events-none absolute left-6 right-6 top-6 hidden transition-[opacity,transform] duration-500 md:block",
+                    open ? "translate-y-0 opacity-100 delay-200" : "translate-y-2 opacity-0"
+                  )}
+                >
+                  <div className="w-[300px] max-w-full">
+                    <Art />
+                  </div>
                 </div>
-              </motion.button>
+
+                <div className="mt-auto">
+                  <p className="font-display text-[1.35rem] leading-snug">{card.title}</p>
+                  <p
+                    className={cn(
+                      "text-sm text-muted-foreground transition-[opacity,max-height,margin] duration-500",
+                      open ? "mt-1.5 max-h-12 opacity-100" : "max-h-0 opacity-0 md:max-h-0"
+                    )}
+                  >
+                    {card.detail}
+                  </p>
+                </div>
+              </button>
             );
           })}
         </div>
