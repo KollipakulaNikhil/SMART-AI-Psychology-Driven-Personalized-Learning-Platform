@@ -1,27 +1,17 @@
-import {
-  BoardSection,
-  Capabilities,
-  Difference,
-  FinalCta,
-  Footer,
-  Hero,
-  HowItWorks,
-  Navbar,
-} from "@/features/landing/LandingSections";
+import { ClosingCta, Faq, MoreThan, SiteFooter, SiteNav } from "@/features/landing/home/HomeSections";
+import { StoryHero } from "@/features/landing/home/StoryHero";
 
 export default function LandingPage() {
   return (
     <>
-      <Navbar />
-      <main>
-        <Hero />
-        <HowItWorks />
-        <Difference />
-        <BoardSection />
-        <Capabilities />
-        <FinalCta />
+      <SiteNav />
+      <main className="pt-16">
+        <StoryHero />
+        <MoreThan />
+        <Faq />
+        <ClosingCta />
       </main>
-      <Footer />
+      <SiteFooter />
     </>
   );
 }
