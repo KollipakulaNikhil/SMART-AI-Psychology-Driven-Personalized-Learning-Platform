@@ -246,28 +246,40 @@ const REVIEWS = [1, 3, 7, 15];
 const px = (day: number) => PAD.l + (day / DAYS) * (W - PAD.l - PAD.r);
 const py = (r: number) => PAD.t + (1 - r) * (H - PAD.t - PAD.b);
 
+/**
+ * Builds the curve and, for each review, how far along the line's *length*
+ * it sits — the line draws by length, so that is when its dot should appear.
+ */
 function curvePath(withReviews: boolean) {
-  const pts: string[] = [];
+  const pts: [number, number][] = [];
+  const reviewAt: number[] = [];
   let last = 0;
   let stability = 1.6;
   for (let i = 0; i <= DAYS * 8; i++) {
     const day = i / 8;
     if (withReviews && REVIEWS.includes(day)) {
-      pts.push(`L${px(day).toFixed(1)},${py(Math.exp(-(day - last) / stability)).toFixed(1)}`);
+      pts.push([px(day), py(Math.exp(-(day - last) / stability))]);
+      reviewAt.push(pts.length); // index of the point at the top of the jump
       last = day;
       stability *= 2.6;
     }
-    const r = Math.exp(-(day - last) / stability);
-    pts.push(`${i === 0 ? "M" : "L"}${px(day).toFixed(1)},${py(r).toFixed(1)}`);
+    pts.push([px(day), py(Math.exp(-(day - last) / stability))]);
   }
-  return pts.join(" ");
+  const cumulative = [0];
+  for (let i = 1; i < pts.length; i++) {
+    cumulative.push(cumulative[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  }
+  const total = cumulative[cumulative.length - 1];
+  const d = pts.map(([x, y], i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`).join(" ");
+  return { d, reviewFractions: reviewAt.map((i) => cumulative[i] / total) };
 }
 
-const PATH_PLAIN = curvePath(false);
-const PATH_REVIEW = curvePath(true);
+const PATH_PLAIN = curvePath(false).d;
+const REVIEW_CURVE = curvePath(true);
+const PATH_REVIEW = REVIEW_CURVE.d;
 
 function ReviewDot({ progress, day, i }: { progress: MotionValue<number>; day: number; i: number }) {
-  const at = day / DAYS;
+  const at = REVIEW_CURVE.reviewFractions[i];
   const opacity = useTransform(progress, [at, at + 0.03], [0, 1]);
   const scale = useTransform(progress, [at, at + 0.05], [0.4, 1]);
   return (
@@ -282,7 +294,7 @@ function ReviewDot({ progress, day, i }: { progress: MotionValue<number>; day: n
 
 export function ForgettingCurve({ figures }: { figures: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.75", "end 0.55"] });
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 0.9", "start 0.35"] });
   const draw = useTransform(scrollYProgress, [0, 1], [0, 1]);
   const endLabels = useTransform(scrollYProgress, [0.9, 1], [0, 1]);
 
