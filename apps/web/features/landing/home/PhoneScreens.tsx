@@ -1,22 +1,61 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { createContext, useContext } from "react";
+import { motion, useMotionValue, useTransform, type MotionValue } from "framer-motion";
 import { ArrowUp, Check, Play } from "lucide-react";
 import { LogoMark } from "@/components/layout/Logo";
 import { cn } from "@/lib/utils";
 
 /**
- * What the phone in the hero shows at each step of the story. Each screen is
- * a small, static-ish mock of a real SMART AI surface, drawn in the app's own
- * paper palette so it reads as "this product", not a stock phone.
+ * What the phone in the story shows at each step. Each screen is a small mock
+ * of a real SMART AI surface, drawn in the app's own paper palette.
+ *
+ * Screens are built by scroll: a 0..1 "build" value comes from the story via
+ * BuildProvider, and every piece of a screen is a Beat that appears at its own
+ * point. So a screen starts blank and fills in one item at a time as you
+ * scroll — and empties again if you scroll back. Without a provider everything
+ * is shown.
  */
 
-function Bubble({ from, children, delay = 0 }: { from: "app" | "me"; children: React.ReactNode; delay?: number }) {
+const BuildContext = createContext<MotionValue<number> | null>(null);
+export const BuildProvider = BuildContext.Provider;
+
+function useBuild() {
+  const fallback = useMotionValue(1);
+  return useContext(BuildContext) ?? fallback;
+}
+
+/** A 0..1 value that runs from `from` to `to` of the build. */
+function useBuildRange(from: number, to: number) {
+  return useTransform(useBuild(), [from, to], [0, 1]);
+}
+
+/** Fades and slides in as the build passes `at`. */
+function Beat({
+  at,
+  className,
+  children,
+  slide = 8,
+}: {
+  at: number;
+  className?: string;
+  children?: React.ReactNode;
+  slide?: number;
+}) {
+  const build = useBuild();
+  const opacity = useTransform(build, [at, at + 0.1], [0, 1]);
+  const y = useTransform(build, [at, at + 0.1], [slide, 0]);
   return (
-    <motion.p
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.35 }}
+    <motion.div style={{ opacity, y }} className={className}>
+      {children}
+    </motion.div>
+  );
+}
+
+function Bubble({ from, at, children }: { from: "app" | "me"; at: number; children: React.ReactNode }) {
+  return (
+    <Beat
+      at={at}
       className={cn(
         "max-w-[78%] rounded-2xl px-3 py-2 text-[11.5px] leading-snug",
         from === "me"
@@ -25,28 +64,35 @@ function Bubble({ from, children, delay = 0 }: { from: "app" | "me"; children: R
       )}
     >
       {children}
-    </motion.p>
+    </Beat>
   );
 }
 
 function LearnsScreen() {
   return (
     <div className="flex h-full flex-col">
-      <div className="flex flex-col items-center pt-6">
+      <Beat at={0} className="flex flex-col items-center pt-6">
         <LogoMark className="h-12 w-12 rounded-xl" />
         <p className="mt-2 font-display text-sm">SMART AI</p>
-      </div>
+      </Beat>
       <div className="mt-auto space-y-2 px-3 pb-2">
-        <p className="mx-auto w-fit rounded-full bg-foreground/[0.06] px-2 py-0.5 text-[9px] text-muted-foreground">
+        <Beat
+          at={0.1}
+          className="mx-auto w-fit rounded-full bg-foreground/[0.06] px-2 py-0.5 text-[9px] text-muted-foreground"
+        >
           Today 9:41 AM
-        </p>
-        <Bubble from="app">What do you want to learn?</Bubble>
-        <Bubble from="me" delay={0.15}>Photosynthesis. My exam is on Friday.</Bubble>
-        <Bubble from="me" delay={0.3}>Long text loses me — show me instead.</Bubble>
-        <Bubble from="app" delay={0.45}>Visual, quick pace, exam focus. Got it.</Bubble>
-        <p className="text-right text-[9px] text-muted-foreground">Delivered</p>
+        </Beat>
+        <Bubble from="app" at={0.22}>What do you want to learn?</Bubble>
+        <Bubble from="me" at={0.4}>Photosynthesis. My exam is on Friday.</Bubble>
+        <Bubble from="me" at={0.58}>Long text loses me — show me instead.</Bubble>
+        <Bubble from="app" at={0.76}>Visual, quick pace, exam focus. Got it.</Bubble>
+        <Beat at={0.88} className="text-right text-[9px] text-muted-foreground">
+          Delivered
+        </Beat>
       </div>
-      <Composer />
+      <Beat at={0} slide={0}>
+        <Composer />
+      </Beat>
     </div>
   );
 }
@@ -76,7 +122,7 @@ const SLIDES: [string, "written" | "writing" | "queued"][] = [
 function WritesScreen() {
   return (
     <div className="flex h-full flex-col px-3 pt-3">
-      <div className="flex items-end justify-between border-b border-foreground/10 pb-2">
+      <Beat at={0} className="flex items-end justify-between border-b border-foreground/10 pb-2">
         <div>
           <p className="text-[12px] font-semibold">Photosynthesis</p>
           <p className="text-[9.5px] text-muted-foreground">Writing for a visual learner</p>
@@ -84,15 +130,16 @@ function WritesScreen() {
         <p className="font-display text-2xl leading-none">
           6<span className="ml-1 font-sans text-[9px] text-muted-foreground">slides</span>
         </p>
-      </div>
-      <ul className="mt-2 space-y-1.5">
+      </Beat>
+      <div className="mt-2 space-y-1.5">
         {SLIDES.map(([title, state], i) => (
-          <motion.li
+          <Beat
             key={title}
-            initial={{ opacity: 0, x: -6 }}
-            animate={{ opacity: state === "queued" ? 0.45 : 1, x: 0 }}
-            transition={{ delay: i * 0.08 }}
-            className="flex items-center gap-2 rounded-xl border border-foreground/10 bg-card px-2.5 py-2"
+            at={0.15 + i * 0.13}
+            className={cn(
+              "flex items-center gap-2 rounded-xl border border-foreground/10 bg-card px-2.5 py-2",
+              state === "queued" && "[&>*]:opacity-50"
+            )}
           >
             <span className="nums font-mono text-[9px] text-muted-foreground">{String(i + 1).padStart(2, "0")}</span>
             <span className="flex-1 truncate text-[11px] font-medium">{title}</span>
@@ -106,49 +153,46 @@ function WritesScreen() {
             >
               {state}
             </span>
-          </motion.li>
+          </Beat>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
 
 function ExplainsScreen() {
+  const played = useBuildRange(0.2, 0.95);
+  const width = useTransform(played, (v) => `${8 + v * 80}%`);
   return (
     <div className="flex h-full flex-col px-3 pt-3">
-      <div className="relative aspect-[9/12] overflow-hidden rounded-2xl border border-foreground/10 bg-[#EFE7D3] text-[#2A2A26]">
+      <Beat
+        at={0}
+        slide={0}
+        className="relative aspect-[9/12] overflow-hidden rounded-2xl border border-foreground/10 bg-[#EFE7D3] text-[#2A2A26]"
+      >
         <p className="pt-4 text-center font-display text-[11px] font-bold tracking-wide">HOW PLANTS MAKE FOOD</p>
         <div className="mx-3 mt-3 rounded-lg border border-[#7FAE86] p-2">
           <p className="text-center font-display text-[7px] font-bold tracking-[0.2em]">KEY IDEAS</p>
           {["Light is captured", "Water is split", "Sugar is built"].map((t, i) => (
-            <motion.p
-              key={t}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.15 + i * 0.25 }}
-              className="mt-1 flex items-center gap-1.5 font-hand text-[11px]"
-            >
+            <Beat key={t} at={0.2 + i * 0.17} slide={4} className="mt-1 flex items-center gap-1.5 font-hand text-[11px]">
               <span className={cn("h-1.5 w-1.5 rounded-full", i % 2 ? "bg-[#6AA6CF]" : "bg-[#EE8F4A]")} />
               {t}
-            </motion.p>
+            </Beat>
           ))}
         </div>
-        <p className="absolute bottom-8 left-1/2 -translate-x-1/2 -rotate-1 whitespace-nowrap bg-[#E8DEC1] px-3 py-1 font-hand text-[13px] shadow-sm">
-          sunlight becomes sugar
-        </p>
+        <Beat at={0.72} className="absolute bottom-8 left-1/2 -translate-x-1/2">
+          <p className="-rotate-1 whitespace-nowrap bg-[#E8DEC1] px-3 py-1 font-hand text-[13px] shadow-sm">
+            sunlight becomes sugar
+          </p>
+        </Beat>
         <div className="absolute inset-x-3 bottom-3 flex items-center gap-2">
           <Play className="h-3 w-3 fill-current" aria-hidden />
           <span className="h-0.5 flex-1 rounded bg-[#2A2A26]/20">
-            <motion.span
-              className="block h-full rounded bg-[#2A2A26]"
-              initial={{ width: "12%" }}
-              animate={{ width: "64%" }}
-              transition={{ duration: 3.5, ease: "linear" }}
-            />
+            <motion.span className="block h-full rounded bg-[#2A2A26]" style={{ width }} />
           </span>
         </div>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-1">
+      </Beat>
+      <Beat at={0.85} className="mt-3 flex flex-wrap gap-1">
         {["English", "हिन्दी", "తెలుగు", "தமிழ்", "Español"].map((lang, i) => (
           <span
             key={lang}
@@ -160,77 +204,87 @@ function ExplainsScreen() {
             {lang}
           </span>
         ))}
-      </div>
+      </Beat>
     </div>
+  );
+}
+
+/** A handwritten line that writes itself left to right as the build passes it. */
+function Written({ from, to, children }: { from: number; to: number; children: React.ReactNode }) {
+  const v = useBuildRange(from, to);
+  const clipPath = useTransform(v, (x) => `inset(0 ${Math.round((1 - x) * 100)}% 0 0)`);
+  return (
+    <motion.p style={{ clipPath }} className="font-hand text-[17px]">
+      {children}
+    </motion.p>
   );
 }
 
 function DrawsScreen() {
   const terms = ["chlorophyll", "light reaction", "glucose"];
   const flow = ["Sunlight", "Leaf", "Sugar"];
+  const underline = useBuildRange(0.04, 0.14);
   return (
     <div className="flex h-full flex-col px-3 pt-4">
-      <p className="font-display text-sm">The light reactions</p>
-      <span className="mt-1 block h-0.5 w-16 rounded bg-mark" />
+      <Beat at={0} className="font-display text-sm">
+        The light reactions
+      </Beat>
+      <motion.span style={{ scaleX: underline }} className="mt-1 block h-0.5 w-16 origin-left rounded bg-mark" />
       <div className="mt-4 space-y-2">
         {terms.map((t, i) => (
-          <motion.p
-            key={t}
-            initial={{ opacity: 0, clipPath: "inset(0 100% 0 0)" }}
-            animate={{ opacity: 1, clipPath: "inset(0 0% 0 0)" }}
-            transition={{ delay: 0.1 + i * 0.3, duration: 0.45 }}
-            className="font-hand text-[17px]"
-          >
+          <Written key={t} from={0.16 + i * 0.16} to={0.28 + i * 0.16}>
             • {t}
-          </motion.p>
+          </Written>
         ))}
       </div>
       <div className="mt-6 flex items-center justify-between">
         {flow.map((node, i) => (
-          <motion.div
-            key={node}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 1 + i * 0.2 }}
-            className="flex items-center"
-          >
+          <Beat key={node} at={0.66 + i * 0.1} className="flex items-center">
             <span className="rounded-lg border-2 border-secondary/60 bg-card px-2 py-1.5 font-hand text-[11px]">{node}</span>
             {i < flow.length - 1 && <span className="ml-1.5 text-muted-foreground">→</span>}
-          </motion.div>
+          </Beat>
         ))}
       </div>
-      <p className="mt-auto pb-4 text-center text-[9.5px] text-muted-foreground">Tap a term to ask the tutor</p>
+      <Beat at={0.9} className="mt-auto pb-4 text-center text-[9.5px] text-muted-foreground">
+        Tap a term to ask the tutor
+      </Beat>
     </div>
   );
 }
 
 function QuizzesScreen() {
   const options = ["In the roots", "In the chloroplasts", "In the stem", "In the soil"];
+  const answered = useBuildRange(0.78, 0.86);
+  const bar = useTransform(useBuildRange(0.78, 0.9), (v) => `${50 + v * 17}%`);
   return (
     <div className="flex h-full flex-col px-3 pt-3">
-      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+      <Beat at={0} className="flex items-center justify-between text-[10px] text-muted-foreground">
         <span>Boss Battle · 4 / 6</span>
         <span className="font-semibold text-amber">🔥 3 streak</span>
-      </div>
-      <div className="mt-2 h-1.5 rounded-full bg-foreground/10">
-        <div className="h-full w-2/3 rounded-full bg-secondary" />
-      </div>
-      <p className="mt-5 font-display text-[15px] leading-snug">Where does photosynthesis happen?</p>
+      </Beat>
+      <Beat at={0} slide={0} className="mt-2 h-1.5 rounded-full bg-foreground/10">
+        <motion.div style={{ width: bar }} className="h-full rounded-full bg-secondary" />
+      </Beat>
+      <Beat at={0.12} className="mt-5 font-display text-[15px] leading-snug">
+        Where does photosynthesis happen?
+      </Beat>
       <div className="mt-4 space-y-2">
         {options.map((option, i) => (
-          <motion.div
-            key={option}
-            initial={false}
-            animate={i === 1 ? { scale: [1, 1.03, 1] } : {}}
-            transition={{ delay: 0.9, duration: 0.4 }}
-            className={cn(
-              "flex items-center justify-between rounded-xl border px-3 py-2.5 text-[11.5px]",
-              i === 1 ? "border-secondary bg-secondary/10 font-medium" : "border-foreground/10 bg-card"
+          <Beat key={option} at={0.26 + i * 0.12} className="relative">
+            <div className="flex items-center justify-between rounded-xl border border-foreground/10 bg-card px-3 py-2.5 text-[11.5px]">
+              {option}
+            </div>
+            {i === 1 && (
+              <motion.div
+                style={{ opacity: answered }}
+                className="absolute inset-0 flex items-center justify-between overflow-hidden rounded-xl border border-secondary bg-card px-3 text-[11.5px] font-medium"
+              >
+                <span aria-hidden className="absolute inset-0 bg-secondary/10" />
+                <span className="relative">{option}</span>
+                <Check className="relative h-3.5 w-3.5 text-secondary" aria-hidden />
+              </motion.div>
             )}
-          >
-            {option}
-            {i === 1 && <Check className="h-3.5 w-3.5 text-secondary" aria-hidden />}
-          </motion.div>
+          </Beat>
         ))}
       </div>
     </div>
@@ -247,15 +301,15 @@ const REVIEWS: [string, string, boolean][] = [
 function RemembersScreen() {
   return (
     <div className="flex h-full flex-col px-3 pt-3">
-      <p className="text-[12px] font-semibold">Review</p>
-      <p className="text-[9.5px] text-muted-foreground">Just before you would forget</p>
-      <ul className="mt-3 space-y-1.5">
+      <Beat at={0}>
+        <p className="text-[12px] font-semibold">Review</p>
+        <p className="text-[9.5px] text-muted-foreground">Just before you would forget</p>
+      </Beat>
+      <div className="mt-3 space-y-1.5">
         {REVIEWS.map(([topic, when, due], i) => (
-          <motion.li
+          <Beat
             key={topic}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
+            at={0.18 + i * 0.17}
             className={cn(
               "flex items-center gap-2.5 rounded-xl border px-2.5 py-2",
               due ? "border-foreground bg-card shadow-lift" : "border-foreground/10 bg-card/70"
@@ -267,9 +321,9 @@ function RemembersScreen() {
               <span className="block text-[9px] text-muted-foreground">{when}</span>
             </span>
             {due && <span className="rounded-full bg-foreground px-2 py-0.5 text-[8.5px] text-background">Start</span>}
-          </motion.li>
+          </Beat>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

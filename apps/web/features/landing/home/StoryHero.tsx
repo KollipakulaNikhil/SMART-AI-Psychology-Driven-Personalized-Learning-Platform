@@ -8,7 +8,7 @@ import {
   useTransform,
   type MotionValue,
 } from "framer-motion";
-import { Phone, PHONE_SCREENS } from "./PhoneScreens";
+import { BuildProvider, Phone, PHONE_SCREENS } from "./PhoneScreens";
 
 /**
  * The story after the hero. The section is several screens tall; its inner
@@ -63,9 +63,14 @@ const ARC_STEP_DEG = 12;
 /** Where the active verb's dot sits, in px from the container's left edge. */
 const ARC_X = 24;
 /** Scroll distance per step, in viewport heights. */
-const STEP_VH = 70;
-/** Fraction of each step's slice spent holding still before moving on. */
-const HOLD = 0.6;
+const STEP_VH = 110;
+/**
+ * Each step's slice of scroll: the screen builds item by item over
+ * BUILD_FROM..BUILD_TO, rests complete until HOLD, then cross-fades to the next.
+ */
+const BUILD_FROM = 0.03;
+const BUILD_TO = 0.62;
+const HOLD = 0.75;
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const smooth = (t: number) => t * t * (3 - 2 * t);
@@ -182,18 +187,28 @@ function Pointer() {
   );
 }
 
+/** One screen, built item by item by scroll within its own step's slice. */
+function BuiltScreen({ progress, index }: { progress: MotionValue<number>; index: number }) {
+  const build = useTransform(progress, (p) => clamp01((p * N - index - BUILD_FROM) / (BUILD_TO - BUILD_FROM)));
+  const Screen = PHONE_SCREENS[index];
+  return (
+    <BuildProvider value={build}>
+      <Screen />
+    </BuildProvider>
+  );
+}
+
 /**
- * All six screens are stacked in the phone and cross-faded by scroll. A screen
- * mounts the first time it starts to come into view, so its own small intro
- * plays as you arrive — not earlier, off-screen.
+ * All six screens are stacked in the phone and cross-faded by scroll. Each one
+ * arrives blank and fills in one item at a time as you keep scrolling.
  */
-function PhoneStage({ pos, active, seen }: { pos: MotionValue<number>; active: number; seen: number }) {
+function PhoneStage({ pos, progress, active }: { pos: MotionValue<number>; progress: MotionValue<number>; active: number }) {
   return (
     <Phone status={STEPS[active].status}>
       <div className="grid h-full">
-        {PHONE_SCREENS.map((Screen, i) => (
+        {PHONE_SCREENS.map((_, i) => (
           <Layer key={i} pos={pos} index={i} shift={16} className="h-full min-h-0">
-            {i <= seen ? <Screen /> : null}
+            <BuiltScreen progress={progress} index={i} />
           </Layer>
         ))}
       </div>
@@ -204,7 +219,6 @@ function PhoneStage({ pos, active, seen }: { pos: MotionValue<number>; active: n
 export function StoryHero() {
   const ref = useRef<HTMLElement>(null);
   const [active, setActive] = useState(0);
-  const [seen, setSeen] = useState(0);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
   const pos = useTransform(scrollYProgress, toPosition);
 
@@ -216,16 +230,14 @@ export function StoryHero() {
   useMotionValueEvent(pos, "change", (p) => {
     const next = Math.round(p);
     setActive((c) => (c === next ? c : next));
-    const reach = Math.ceil(p - 0.001);
-    setSeen((s) => (reach > s ? reach : s));
   });
 
-  /** Scroll to the resting point of step i. */
+  /** Scroll to the point where step i is fully built. */
   const pick = (i: number) => {
     const section = ref.current;
     if (!section) return;
     const travel = section.offsetHeight - window.innerHeight;
-    const top = section.getBoundingClientRect().top + window.scrollY + ((i + HOLD / 2) / N) * travel;
+    const top = section.getBoundingClientRect().top + window.scrollY + ((i + (BUILD_TO + HOLD) / 2) / N) * travel;
     window.scrollTo({ top, behavior: "smooth" });
   };
 
@@ -245,7 +257,7 @@ export function StoryHero() {
             className="absolute left-1/2 top-1/2 -ml-[136px] -mt-[280px]"
             style={{ scale: stageScale, opacity: stageOpacity }}
           >
-            <PhoneStage pos={pos} active={active} seen={seen} />
+            <PhoneStage pos={pos} progress={scrollYProgress} active={active} />
           </motion.div>
           <div className="absolute top-1/2 -translate-y-[60%]" style={{ left: "calc(50% + 196px)" }}>
             <div className="relative">
@@ -268,7 +280,7 @@ export function StoryHero() {
             className="-mb-[123px] origin-top scale-[0.78] sm:-mb-[56px] sm:scale-90"
             style={{ opacity: stageOpacity }}
           >
-            <PhoneStage pos={pos} active={active} seen={seen} />
+            <PhoneStage pos={pos} progress={scrollYProgress} active={active} />
           </motion.div>
           <div className="mt-2 w-full text-center">
             <Notes pos={pos} center />
