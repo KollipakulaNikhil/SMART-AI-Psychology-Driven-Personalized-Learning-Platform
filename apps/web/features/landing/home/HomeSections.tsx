@@ -13,7 +13,9 @@ import { cn } from "@/lib/utils";
 
 const NAV: [string, string][] = [
   ["How it works", "#story"],
-  ["Lessons", "#more"],
+  ["Your way", "#your-way"],
+  ["Languages", "#languages"],
+  ["Games", "#games"],
   ["FAQ", "#faq"],
 ];
 
@@ -319,7 +321,10 @@ export function ClosingCta() {
 
 const FOOTER: { title: string; links: [string, string][] }[] = [
   { title: "Learn", links: [["Start the discovery", "/login"], ["Log in", "/login"]] },
-  { title: "Product", links: [["How it works", "#story"], ["Lessons", "#more"], ["FAQ", "#faq"]] },
+  {
+    title: "Product",
+    links: [["How it works", "#story"], ["Your way", "#your-way"], ["Lessons", "#more"], ["Languages", "#languages"], ["Games", "#games"], ["FAQ", "#faq"]],
+  },
 ];
 
 export function SiteFooter() {
