@@ -1,14 +1,21 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "framer-motion";
+import {
+  motion,
+  useMotionValueEvent,
+  useScroll,
+  useTransform,
+  type MotionValue,
+} from "framer-motion";
 import { Phone, PHONE_SCREENS } from "./PhoneScreens";
 
 /**
  * The story after the hero. The section is several screens tall; its inner
- * stage is sticky, and how far you have scrolled through picks the step. The
- * verbs ride a large arc on the left, the phone (dead centre) shows that step,
- * and a handwritten margin note explains it.
+ * stage is sticky. Everything on the stage is driven *directly* by scroll
+ * position — no timed transitions — so it moves exactly with your hand and
+ * never runs ahead of or behind the scroll. Each step holds still for most of
+ * its slice, then cross-fades into the next over the last part.
  */
 
 const STEPS: { verb: string; note: [string, string]; detail: string; status: string }[] = [
@@ -50,14 +57,81 @@ const STEPS: { verb: string; note: [string, string]; detail: string; status: str
   },
 ];
 
+const N = STEPS.length;
 const ARC_RADIUS = 720;
 const ARC_STEP_DEG = 12;
 /** Where the active verb's dot sits, in px from the container's left edge. */
 const ARC_X = 24;
 /** Scroll distance per step, in viewport heights. */
-const STEP_VH = 55;
+const STEP_VH = 70;
+/** Fraction of each step's slice spent holding still before moving on. */
+const HOLD = 0.6;
 
-function VerbArc({ active, onPick }: { active: number; onPick: (i: number) => void }) {
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+const smooth = (t: number) => t * t * (3 - 2 * t);
+
+/** Scroll progress (0..1) → a continuous step position (0..N-1) with plateaus. */
+function toPosition(progress: number) {
+  const raw = clamp01(progress) * N;
+  const k = Math.min(N - 1, Math.floor(raw));
+  if (k === N - 1) return k;
+  const t = raw - k;
+  return k + smooth(clamp01((t - HOLD) / (1 - HOLD)));
+}
+
+/** Opacity of layer i: the old step is gone before the new one appears, so text never overlaps. */
+const layerOpacity = (pos: number, i: number) => clamp01(1 - Math.abs(pos - i) * 2.2);
+
+function Layer({
+  pos,
+  index,
+  shift = 18,
+  className,
+  children,
+}: {
+  pos: MotionValue<number>;
+  index: number;
+  shift?: number;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const opacity = useTransform(pos, (p) => layerOpacity(p, index));
+  const y = useTransform(pos, (p) => Math.round((index - p) * shift * 10) / 10);
+  const visibility = useTransform(opacity, (o) => (o < 0.01 ? "hidden" : "visible"));
+  return (
+    <motion.div style={{ opacity, y, visibility, gridArea: "1 / 1" }} className={className}>
+      {children}
+    </motion.div>
+  );
+}
+
+function ArcVerb({ pos, index, onPick }: { pos: MotionValue<number>; index: number; onPick: (i: number) => void }) {
+  const offset = useTransform(pos, (p) => index - p);
+  const x = useTransform(offset, (o) => Math.cos((o * ARC_STEP_DEG * Math.PI) / 180) * ARC_RADIUS - ARC_RADIUS + ARC_X);
+  const y = useTransform(offset, (o) => Math.sin((o * ARC_STEP_DEG * Math.PI) / 180) * ARC_RADIUS - 22);
+  const rotate = useTransform(offset, (o) => o * ARC_STEP_DEG);
+  const opacity = useTransform(offset, (o) => {
+    const d = Math.abs(o);
+    return d <= 1 ? 1 - 0.65 * d : d <= 2 ? 0.35 - 0.21 * (d - 1) : Math.max(0, 0.14 - 0.14 * (d - 2));
+  });
+  const dot = useTransform(offset, (o) => 4 + 3 * clamp01(1 - Math.abs(o)));
+  const dotColor = useTransform(offset, (o) => (Math.abs(o) < 0.5 ? "hsl(var(--mark))" : "hsl(var(--foreground) / 0.3)"));
+  return (
+    <motion.button
+      type="button"
+      tabIndex={-1}
+      aria-hidden
+      onClick={() => onPick(index)}
+      className="absolute left-0 top-1/2 flex items-center gap-5 whitespace-nowrap will-change-transform"
+      style={{ x, y, rotate, opacity }}
+    >
+      <motion.span className="block rounded-full" style={{ width: dot, height: dot, backgroundColor: dotColor }} />
+      <span className="font-display text-[2.75rem] leading-none tracking-tight">{STEPS[index].verb}</span>
+    </motion.button>
+  );
+}
+
+function VerbArc({ pos, onPick }: { pos: MotionValue<number>; onPick: (i: number) => void }) {
   return (
     <div
       className="absolute inset-y-0 left-0 hidden w-[30%] lg:block"
@@ -74,65 +148,27 @@ function VerbArc({ active, onPick }: { active: number; onPick: (i: number) => vo
           top: `calc(50% - ${ARC_RADIUS}px)`,
         }}
       />
-      {STEPS.map((step, i) => {
-        const offset = i - active;
-        const angle = (offset * ARC_STEP_DEG * Math.PI) / 180;
-        const x = Math.cos(angle) * ARC_RADIUS - ARC_RADIUS + ARC_X;
-        const y = Math.sin(angle) * ARC_RADIUS;
-        const distance = Math.abs(offset);
-        return (
-          <motion.button
-            key={step.verb}
-            type="button"
-            tabIndex={-1}
-            aria-hidden
-            onClick={() => onPick(i)}
-            className="absolute left-0 top-1/2 flex items-center gap-5 whitespace-nowrap"
-            initial={false}
-            animate={{
-              x: Math.round(x),
-              y: Math.round(y - 22),
-              rotate: offset * ARC_STEP_DEG,
-              opacity: distance === 0 ? 1 : distance === 1 ? 0.35 : distance === 2 ? 0.14 : 0,
-            }}
-            transition={{ type: "spring", stiffness: 90, damping: 20, mass: 0.9 }}
-          >
-            <motion.span
-              className="block rounded-full"
-              initial={false}
-              animate={{
-                width: distance === 0 ? 7 : 4,
-                height: distance === 0 ? 7 : 4,
-                backgroundColor: distance === 0 ? "hsl(var(--mark))" : "hsl(var(--foreground) / 0.3)",
-              }}
-            />
-            <span className="font-display text-[2.75rem] leading-none tracking-tight">{step.verb}</span>
-          </motion.button>
-        );
-      })}
+      {STEPS.map((step, i) => (
+        <ArcVerb key={step.verb} pos={pos} index={i} onPick={onPick} />
+      ))}
     </div>
   );
 }
 
-function MarginNote({ step }: { step: (typeof STEPS)[number] }) {
+function Notes({ pos, center = false }: { pos: MotionValue<number>; center?: boolean }) {
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={step.verb}
-        initial={{ opacity: 0, y: 12, filter: "blur(4px)" }}
-        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-        exit={{ opacity: 0, y: -12, filter: "blur(4px)" }}
-        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        className="max-w-[17rem]"
-      >
-        <p className="font-hand text-[1.6rem] leading-[1.15] text-amber">
-          {step.note[0]}
-          <br />
-          {step.note[1]}
-        </p>
-        <p className="mt-2.5 text-[15px] leading-relaxed text-muted-foreground">{step.detail}</p>
-      </motion.div>
-    </AnimatePresence>
+    <div className="grid">
+      {STEPS.map((step, i) => (
+        <Layer key={step.verb} pos={pos} index={i} shift={14} className={center ? "mx-auto max-w-[19rem]" : "max-w-[17rem]"}>
+          <p className="font-hand text-[1.6rem] leading-[1.15] text-amber">
+            {step.note[0]}
+            <br />
+            {step.note[1]}
+          </p>
+          <p className="mt-2.5 text-[15px] leading-relaxed text-muted-foreground">{step.detail}</p>
+        </Layer>
+      ))}
+    </div>
   );
 }
 
@@ -146,22 +182,21 @@ function Pointer() {
   );
 }
 
-function PhoneStage({ active, step }: { active: number; step: (typeof STEPS)[number] }) {
-  const Screen = PHONE_SCREENS[active];
+/**
+ * All six screens are stacked in the phone and cross-faded by scroll. A screen
+ * mounts the first time it starts to come into view, so its own small intro
+ * plays as you arrive — not earlier, off-screen.
+ */
+function PhoneStage({ pos, active, seen }: { pos: MotionValue<number>; active: number; seen: number }) {
   return (
-    <Phone status={step.status}>
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={active}
-          className="h-full"
-          initial={{ opacity: 0, y: 14, filter: "blur(3px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          exit={{ opacity: 0, y: -10, filter: "blur(3px)" }}
-          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <Screen />
-        </motion.div>
-      </AnimatePresence>
+    <Phone status={STEPS[active].status}>
+      <div className="grid h-full">
+        {PHONE_SCREENS.map((Screen, i) => (
+          <Layer key={i} pos={pos} index={i} shift={16} className="h-full min-h-0">
+            {i <= seen ? <Screen /> : null}
+          </Layer>
+        ))}
+      </div>
     </Phone>
   );
 }
@@ -169,23 +204,30 @@ function PhoneStage({ active, step }: { active: number; step: (typeof STEPS)[num
 export function StoryHero() {
   const ref = useRef<HTMLElement>(null);
   const [active, setActive] = useState(0);
+  const [seen, setSeen] = useState(0);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
+  const pos = useTransform(scrollYProgress, toPosition);
 
-  useMotionValueEvent(scrollYProgress, "change", (progress) => {
-    const next = Math.min(STEPS.length - 1, Math.max(0, Math.floor(progress * STEPS.length)));
-    setActive((current) => (current === next ? current : next));
+  // The phone settles in as the section arrives, tied to the same scroll.
+  const { scrollYProgress: enter } = useScroll({ target: ref, offset: ["start end", "start start"] });
+  const stageScale = useTransform(enter, [0, 1], [0.92, 1]);
+  const stageOpacity = useTransform(enter, [0, 0.55], [0, 1]);
+
+  useMotionValueEvent(pos, "change", (p) => {
+    const next = Math.round(p);
+    setActive((c) => (c === next ? c : next));
+    const reach = Math.ceil(p - 0.001);
+    setSeen((s) => (reach > s ? reach : s));
   });
 
-  /** Scroll to the middle of step i's slice of the section. */
+  /** Scroll to the resting point of step i. */
   const pick = (i: number) => {
     const section = ref.current;
     if (!section) return;
     const travel = section.offsetHeight - window.innerHeight;
-    const top = section.getBoundingClientRect().top + window.scrollY + ((i + 0.5) / STEPS.length) * travel;
+    const top = section.getBoundingClientRect().top + window.scrollY + ((i + HOLD / 2) / N) * travel;
     window.scrollTo({ top, behavior: "smooth" });
   };
-
-  const step = STEPS[active];
 
   return (
     <section
@@ -193,41 +235,43 @@ export function StoryHero() {
       id="story"
       aria-label="What SMART AI does"
       className="relative scroll-mt-16"
-      style={{ height: `calc(${STEPS.length * STEP_VH}vh + 100svh)` }}
+      style={{ height: `calc(${N * STEP_VH}vh + 100svh)` }}
     >
       <div className="sticky top-16 h-[calc(100svh-4rem)] overflow-hidden">
         {/* desktop: verbs on the arc, phone dead centre, note to its right */}
         <div className="container relative hidden h-full lg:block">
-          <VerbArc active={active} onPick={pick} />
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <PhoneStage active={active} step={step} />
-          </div>
+          <VerbArc pos={pos} onPick={pick} />
+          <motion.div
+            className="absolute left-1/2 top-1/2 -ml-[136px] -mt-[280px]"
+            style={{ scale: stageScale, opacity: stageOpacity }}
+          >
+            <PhoneStage pos={pos} active={active} seen={seen} />
+          </motion.div>
           <div className="absolute top-1/2 -translate-y-[60%]" style={{ left: "calc(50% + 196px)" }}>
             <div className="relative">
               <Pointer />
-              <MarginNote step={step} />
+              <Notes pos={pos} />
             </div>
           </div>
         </div>
 
         {/* small screens: verb, phone, note — stacked */}
         <div className="flex h-full flex-col items-center justify-center gap-3 px-6 lg:hidden">
-          <AnimatePresence mode="wait">
-            <motion.p
-              key={step.verb}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="font-display text-4xl"
-            >
-              {step.verb}
-            </motion.p>
-          </AnimatePresence>
-          <div className="-mb-[123px] origin-top scale-[0.78] sm:-mb-[56px] sm:scale-90">
-            <PhoneStage active={active} step={step} />
+          <div className="grid text-center">
+            {STEPS.map((s, i) => (
+              <Layer key={s.verb} pos={pos} index={i} shift={10}>
+                <p className="font-display text-4xl">{s.verb}</p>
+              </Layer>
+            ))}
           </div>
-          <div className="mt-2 text-center">
-            <MarginNote step={step} />
+          <motion.div
+            className="-mb-[123px] origin-top scale-[0.78] sm:-mb-[56px] sm:scale-90"
+            style={{ opacity: stageOpacity }}
+          >
+            <PhoneStage pos={pos} active={active} seen={seen} />
+          </motion.div>
+          <div className="mt-2 w-full text-center">
+            <Notes pos={pos} center />
           </div>
         </div>
 

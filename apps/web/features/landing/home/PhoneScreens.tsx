@@ -41,9 +41,9 @@ function LearnsScreen() {
           Today 9:41 AM
         </p>
         <Bubble from="app">What do you want to learn?</Bubble>
-        <Bubble from="me" delay={0.25}>Photosynthesis. My exam is on Friday.</Bubble>
-        <Bubble from="me" delay={0.5}>Long text loses me — show me instead.</Bubble>
-        <Bubble from="app" delay={0.8}>Visual, quick pace, exam focus. Got it.</Bubble>
+        <Bubble from="me" delay={0.15}>Photosynthesis. My exam is on Friday.</Bubble>
+        <Bubble from="me" delay={0.3}>Long text loses me — show me instead.</Bubble>
+        <Bubble from="app" delay={0.45}>Visual, quick pace, exam focus. Got it.</Bubble>
         <p className="text-right text-[9px] text-muted-foreground">Delivered</p>
       </div>
       <Composer />
@@ -125,7 +125,7 @@ function ExplainsScreen() {
               key={t}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 + i * 0.5 }}
+              transition={{ delay: 0.15 + i * 0.25 }}
               className="mt-1 flex items-center gap-1.5 font-hand text-[11px]"
             >
               <span className={cn("h-1.5 w-1.5 rounded-full", i % 2 ? "bg-[#6AA6CF]" : "bg-[#EE8F4A]")} />
@@ -178,7 +178,7 @@ function DrawsScreen() {
             key={t}
             initial={{ opacity: 0, clipPath: "inset(0 100% 0 0)" }}
             animate={{ opacity: 1, clipPath: "inset(0 0% 0 0)" }}
-            transition={{ delay: 0.2 + i * 0.7, duration: 0.6 }}
+            transition={{ delay: 0.1 + i * 0.3, duration: 0.45 }}
             className="font-hand text-[17px]"
           >
             • {t}
@@ -191,7 +191,7 @@ function DrawsScreen() {
             key={node}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 2.3 + i * 0.35 }}
+            transition={{ delay: 1 + i * 0.2 }}
             className="flex items-center"
           >
             <span className="rounded-lg border-2 border-secondary/60 bg-card px-2 py-1.5 font-hand text-[11px]">{node}</span>
