@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AnimatePresence, motion } from "framer-motion";
 import { FirebaseError } from "firebase/app";
-import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, PlayCircle, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,12 @@ const loginSchema = z.object({
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
+
+/** Shared, public demo account: shown on the page on purpose so anyone can try the app. */
+const DEMO_ACCOUNT = {
+  email: process.env.NEXT_PUBLIC_DEMO_EMAIL ?? "kollipakulanikhil21@gmail.com",
+  password: process.env.NEXT_PUBLIC_DEMO_PASSWORD ?? "SmartAI-Demo-2026",
+};
 type FormMode = "signin" | "signup";
 type Mode = "choose" | FormMode;
 
@@ -125,6 +131,7 @@ export function WelcomePanel() {
   const [mode, setMode] = useState<Mode>("choose");
   const [showPassword, setShowPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
   const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   const router = useRouter();
 
@@ -143,6 +150,18 @@ export function WelcomePanel() {
       toast.error(firebaseErrorMessage(error));
     } finally {
       setGoogleLoading(false);
+    }
+  };
+
+  const onDemo = async () => {
+    setDemoLoading(true);
+    try {
+      await signInWithEmail(DEMO_ACCOUNT.email, DEMO_ACCOUNT.password);
+      router.push("/dashboard");
+    } catch (error) {
+      toast.error(firebaseErrorMessage(error));
+    } finally {
+      setDemoLoading(false);
     }
   };
 
@@ -198,6 +217,21 @@ export function WelcomePanel() {
                 </button>
                 <button type="button" className={paperBtn} onClick={() => setMode("signin")}>
                   Log in
+                </button>
+              </div>
+
+              {/* shared demo account: anyone can look around and make lessons */}
+              <div className="mt-6 rounded-xl border border-dashed border-border bg-elevated/60 p-4">
+                <p className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
+                  <PlayCircle className="h-4 w-4 text-primary" aria-hidden /> Just looking? Use the demo account
+                </p>
+                <dl className="mt-2 space-y-0.5 font-mono text-[12px] text-muted-foreground">
+                  <div className="flex gap-2"><dt className="w-16">Email</dt><dd className="select-all text-foreground">{DEMO_ACCOUNT.email}</dd></div>
+                  <div className="flex gap-2"><dt className="w-16">Password</dt><dd className="select-all text-foreground">{DEMO_ACCOUNT.password}</dd></div>
+                </dl>
+                <button type="button" className={cn(paperBtn, "mt-3 h-10 text-[14px]")} onClick={onDemo} disabled={demoLoading}>
+                  {demoLoading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+                  Sign in as demo
                 </button>
               </div>
             </motion.div>
