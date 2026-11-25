@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { WelcomePanel } from "@/features/auth/WelcomePanel";
 import { WelcomeStory } from "@/features/auth/WelcomeStory";
+import { Logo } from "@/components/layout/Logo";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
@@ -16,27 +18,32 @@ export default function LoginPage() {
   }, [loading, firebaseUser, router]);
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(135deg,#d8d0f4_0%,#efdcec_45%,#e4def8_100%)] p-2.5 sm:p-4 dark:bg-[linear-gradient(135deg,#1d1a2b_0%,#26192a_45%,#1a1a2a_100%)]">
-      <div className="flex min-h-[calc(100svh-1.25rem)] flex-col rounded-[28px] bg-white shadow-[0_30px_80px_-40px_rgba(60,40,120,0.45)] sm:min-h-[calc(100svh-2rem)] dark:bg-neutral-950">
-        <header className="flex items-center justify-between px-6 pt-5 sm:px-8 sm:pt-7">
-          <Link
-            href="/"
-            className="rounded text-xl font-semibold tracking-tight text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 dark:text-neutral-50"
-          >
-            smart ai.
-          </Link>
-          <Link href="/" className="text-sm text-neutral-500 transition-colors hover:text-neutral-900 dark:hover:text-neutral-100">
-            What is SMART AI? →
-          </Link>
+    <main className="relative min-h-screen overflow-hidden">
+      {/* Same paper, ink and vermilion as the dashboard: a few soft washes of the
+          theme colours sit behind the page instead of a separate gradient. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_8%_0%,hsl(var(--mark)/0.10),transparent_70%),radial-gradient(50%_45%_at_100%_100%,hsl(var(--amber)/0.14),transparent_70%),radial-gradient(40%_40%_at_60%_40%,hsl(var(--secondary)/0.06),transparent_70%)]"
+      />
+
+      <div className="relative mx-auto flex min-h-screen max-w-[1320px] flex-col px-4 sm:px-8">
+        <header className="flex h-20 items-center justify-between">
+          <Logo href="/" />
+          <div className="flex items-center gap-3 sm:gap-5">
+            <Link href="/" className="link-ink hidden text-sm sm:inline">
+              What is SMART AI?
+            </Link>
+            <ThemeToggle />
+          </div>
         </header>
 
-        <div className="grid flex-1 gap-6 p-4 sm:p-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+        <div className="grid flex-1 items-stretch gap-8 pb-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-10">
           <div className="hidden lg:block">
             <WelcomeStory />
           </div>
-          <div className="flex flex-col items-center justify-center py-10">
+          <div className="flex flex-col items-center justify-center py-6 sm:py-10">
             <WelcomePanel />
-            <p className="mt-10 max-w-[300px] text-center text-[12px] leading-relaxed text-neutral-400">
+            <p className="mt-8 max-w-[340px] text-center text-[12px] leading-relaxed text-muted-foreground">
               By continuing you agree to let SMART AI store your learning profile to personalize your lessons.
             </p>
           </div>

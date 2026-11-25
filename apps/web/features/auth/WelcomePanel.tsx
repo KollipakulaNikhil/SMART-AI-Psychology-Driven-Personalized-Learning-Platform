@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { AnimatePresence, motion } from "framer-motion";
 import { FirebaseError } from "firebase/app";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, User } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
@@ -19,7 +19,8 @@ const loginSchema = z.object({
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
-type Mode = "choose" | "signin" | "signup";
+type FormMode = "signin" | "signup";
+type Mode = "choose" | FormMode;
 
 function firebaseErrorMessage(error: unknown): string {
   if (error instanceof FirebaseError) {
@@ -52,17 +53,77 @@ function GoogleIcon() {
   );
 }
 
-/* The two button looks from the welcome screen: a dark, softly lit slab and a white one. */
-const darkBtn =
-  "flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-b from-neutral-700 to-neutral-950 text-[15px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_8px_18px_-10px_rgba(0,0,0,0.6)] transition-[filter,transform] hover:brightness-125 active:scale-[0.99] disabled:opacity-60 dark:from-neutral-100 dark:to-neutral-300 dark:text-neutral-900";
-const lightBtn =
-  "flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white text-[15px] font-medium text-neutral-900 shadow-sm transition-[background-color,transform] hover:bg-neutral-50 active:scale-[0.99] disabled:opacity-60 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800";
-const field =
-  "h-12 w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 text-[15px] text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 focus:border-neutral-900 focus:bg-white focus-visible:ring-2 focus-visible:ring-neutral-900/15 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:focus:border-neutral-300";
-const focusRing = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900 focus-visible:ring-offset-2 dark:focus-visible:ring-neutral-200";
+/* Ink slab for the main action, paper for the secondary one — the dashboard's palette. */
+const inkBtn =
+  "group relative flex h-12 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-foreground text-[15px] font-medium text-background shadow-lift transition-[transform,box-shadow] hover:shadow-float active:scale-[0.99] disabled:opacity-60";
+const paperBtn =
+  "flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-border bg-background text-[15px] font-medium text-foreground transition-[background-color,border-color,transform] hover:border-foreground/40 hover:bg-elevated active:scale-[0.99] disabled:opacity-60";
+
+const COPY: Record<FormMode, { eyebrow: string; title: string; italic: string; sub: string; submit: string }> = {
+  signin: {
+    eyebrow: "Log in",
+    title: "Welcome",
+    italic: "back.",
+    sub: "Pick up where your last lesson left off.",
+    submit: "Log in",
+  },
+  signup: {
+    eyebrow: "Create account",
+    title: "Start",
+    italic: "learning.",
+    sub: "Three minutes of discovery, then lessons built for how you think.",
+    submit: "Create account",
+  },
+};
+
+function Field({
+  id,
+  label,
+  icon: Icon,
+  error,
+  trailing,
+  ...input
+}: React.ComponentProps<"input"> & {
+  id: string;
+  label: string;
+  icon: typeof Mail;
+  error?: string;
+  trailing?: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 block text-[13px] font-medium text-foreground">
+        {label}
+      </label>
+      <div
+        className={cn(
+          "group flex h-12 items-center gap-3 rounded-xl border bg-background px-3.5 transition-[border-color,box-shadow]",
+          "focus-within:border-foreground focus-within:shadow-[0_0_0_4px_hsl(var(--mark)/0.12)]",
+          error ? "border-destructive" : "border-border hover:border-foreground/40"
+        )}
+      >
+        <Icon className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-focus-within:text-primary" aria-hidden />
+        <input
+          id={id}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
+          className="h-full min-w-0 flex-1 bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground/70 focus-visible:outline-none"
+          {...input}
+        />
+        {trailing}
+      </div>
+      {error && (
+        <p id={`${id}-error`} role="alert" className="mt-1.5 text-xs font-medium text-destructive">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export function WelcomePanel() {
   const [mode, setMode] = useState<Mode>("choose");
+  const [showPassword, setShowPassword] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   const router = useRouter();
@@ -102,109 +163,141 @@ export function WelcomePanel() {
     }
   };
 
+  const copy = mode === "choose" ? null : COPY[mode];
+
   return (
-    <div className="w-full max-w-[340px]">
-      <AnimatePresence mode="wait" initial={false}>
-        {mode === "choose" ? (
-          <motion.div
-            key="choose"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.22 }}
-          >
-            <h1 className="text-center font-sans text-[2rem] font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
-              Welcome to SMART AI
-            </h1>
-            <div className="mt-8 space-y-3">
-              <button type="button" className={cn(darkBtn, focusRing)} onClick={() => setMode("signup")}>
-                Join SMART AI
-              </button>
-              <button type="button" className={cn(lightBtn, focusRing)} onClick={() => setMode("signin")}>
-                Log in
-              </button>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key={mode}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.22 }}
-          >
-            <button
-              type="button"
-              onClick={() => setMode("choose")}
-              className={cn("-ml-2 flex h-10 items-center gap-1.5 rounded-lg px-2 text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100", focusRing)}
+    <div className="relative w-full max-w-[420px]">
+      {/* a second sheet tucked under the card, like a page in a notebook */}
+      <div aria-hidden className="absolute inset-0 translate-x-2 translate-y-2 rotate-[1.2deg] rounded-[22px] border border-border bg-elevated" />
+
+      <div className="relative overflow-hidden rounded-[22px] border border-border bg-card p-6 shadow-float sm:p-8">
+        {/* vermilion margin rule */}
+        <span aria-hidden className="absolute inset-y-6 left-0 w-[3px] rounded-r bg-mark" />
+
+        <AnimatePresence mode="wait" initial={false}>
+          {mode === "choose" || !copy ? (
+            <motion.div
+              key="choose"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22 }}
+              className="py-6"
             >
-              <ArrowLeft className="h-4 w-4" aria-hidden /> Back
-            </button>
-            <h1 className="mt-3 font-sans text-[1.75rem] font-semibold tracking-tight text-neutral-900 dark:text-neutral-50">
-              {mode === "signup" ? "Create your account" : "Log in"}
-            </h1>
-            <p className="mt-1.5 text-[14px] text-neutral-500">
-              {mode === "signup"
-                ? "Three minutes of discovery, then lessons built for how you think."
-                : "Pick up where your last lesson left off."}
-            </p>
-
-            <div className="mt-7 space-y-4">
-              <button type="button" className={cn(lightBtn, focusRing)} onClick={onGoogle} disabled={googleLoading}>
-                {googleLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <GoogleIcon />}
-                Continue with Google
+              <p className="label-mono text-center">Welcome</p>
+              <h1 className="mt-3 text-center text-[2.3rem] font-normal leading-[1.05] tracking-[-0.03em] text-foreground">
+                Welcome to <em className="text-primary">SMART AI</em>
+              </h1>
+              <p className="mx-auto mt-3 max-w-[300px] text-center text-[14.5px] leading-relaxed text-muted-foreground">
+                Lessons built around how you think. Pick one to begin.
+              </p>
+              <div className="mt-9 space-y-3">
+                <button type="button" className={inkBtn} onClick={() => setMode("signup")}>
+                  Join SMART AI
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden />
+                </button>
+                <button type="button" className={paperBtn} onClick={() => setMode("signin")}>
+                  Log in
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key={mode}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.22 }}
+            >
+              <button
+                type="button"
+                onClick={() => setMode("choose")}
+                className="-ml-2 flex h-10 items-center gap-1.5 rounded-lg px-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden /> Back
               </button>
 
-              <div className="flex items-center gap-3 text-[12px] text-neutral-400">
-                <span className="h-px flex-1 bg-neutral-200 dark:bg-neutral-700" />
-                or with email
-                <span className="h-px flex-1 bg-neutral-200 dark:bg-neutral-700" />
-              </div>
+              <p className="label-mono mt-3">{copy.eyebrow}</p>
+              <h1 className="mt-2 text-[2.4rem] font-normal leading-[1.02] tracking-[-0.03em] text-foreground">
+                {copy.title} <em className="text-primary">{copy.italic}</em>
+              </h1>
+              <p className="mt-2 text-[14.5px] leading-relaxed text-muted-foreground">{copy.sub}</p>
 
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-3" noValidate>
-                {mode === "signup" && (
-                  <div>
-                    <label htmlFor="name" className="sr-only">Name</label>
-                    <input id="name" placeholder="Your name" autoComplete="name" className={field} {...register("name")} />
-                  </div>
-                )}
-                <div>
-                  <label htmlFor="email" className="sr-only">Email</label>
-                  <input id="email" type="email" placeholder="you@example.com" autoComplete="email" className={field} {...register("email")} />
-                  {errors.email && <p role="alert" className="mt-1.5 text-xs font-medium text-red-600">{errors.email.message}</p>}
+              <div className="mt-7 space-y-5">
+                <button type="button" className={paperBtn} onClick={onGoogle} disabled={googleLoading}>
+                  {googleLoading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <GoogleIcon />}
+                  Continue with Google
+                </button>
+
+                <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                  <span className="h-px flex-1 bg-border" />
+                  or with email
+                  <span className="h-px flex-1 bg-border" />
                 </div>
-                <div>
-                  <label htmlFor="password" className="sr-only">Password</label>
-                  <input
+
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+                  {mode === "signup" && (
+                    <Field id="name" label="Your name" icon={User} placeholder="Asha Verma" autoComplete="name" {...register("name")} />
+                  )}
+                  <Field
+                    id="email"
+                    label="Email"
+                    icon={Mail}
+                    type="email"
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    error={errors.email?.message}
+                    {...register("email")}
+                  />
+                  <Field
                     id="password"
-                    type="password"
-                    placeholder="Password"
+                    label="Password"
+                    icon={Lock}
+                    type={showPassword ? "text" : "password"}
+                    placeholder={mode === "signup" ? "At least 6 characters" : "Your password"}
                     autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                    className={field}
+                    error={errors.password?.message}
+                    trailing={
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((s) => !s)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        aria-pressed={showPassword}
+                        className="-mr-1.5 grid h-9 w-9 place-items-center rounded-lg text-muted-foreground hover:bg-elevated hover:text-foreground"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+                      </button>
+                    }
                     {...register("password")}
                   />
-                  {errors.password && <p role="alert" className="mt-1.5 text-xs font-medium text-red-600">{errors.password.message}</p>}
-                </div>
-                <button type="submit" className={cn(darkBtn, focusRing, "mt-2")} disabled={isSubmitting}>
-                  {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-                  {mode === "signup" ? "Create account" : "Log in"}
-                </button>
-              </form>
 
-              <p className="pt-1 text-center text-[13px] text-neutral-500">
+                  <button type="submit" className={cn(inkBtn, "mt-2")} disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    ) : (
+                      <>
+                        {copy.submit}
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden />
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+
+              <p className="mt-6 text-center text-[13.5px] text-muted-foreground">
                 {mode === "signin" ? "New to SMART AI?" : "Already have an account?"}{" "}
-                <button
-                  type="button"
-                  className="font-medium text-neutral-900 underline-offset-4 hover:underline dark:text-neutral-100"
-                  onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-                >
+                <button type="button" className="link-ink font-medium" onClick={() => setMode(mode === "signin" ? "signup" : "signin")}>
                   {mode === "signin" ? "Join" : "Log in"}
                 </button>
               </p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <p aria-hidden className="relative mt-6 rotate-[-2deg] text-center font-hand text-[17px] text-muted-foreground">
+        your first lesson is <span className="text-primary">about 40 seconds</span> away ↗
+      </p>
     </div>
   );
 }
