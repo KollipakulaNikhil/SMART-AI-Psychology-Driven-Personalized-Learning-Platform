@@ -73,7 +73,7 @@ const config: Config = {
       backgroundImage: {
         // Legacy name. The app chrome no longer uses it; it survives only for
         // the lesson board and video player, which keep their own dark look.
-        "brand-gradient": "linear-gradient(90deg, #E8552D 0%, #E8552D 100%)",
+        "brand-gradient": "linear-gradient(90deg, #F97316 0%, #F97316 100%)",
         grid: `linear-gradient(hsl(var(--border)) 1px, transparent 1px),
                linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)`,
       },

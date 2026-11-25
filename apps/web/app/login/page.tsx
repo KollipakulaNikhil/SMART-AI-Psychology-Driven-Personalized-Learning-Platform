@@ -19,11 +19,10 @@ export default function LoginPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden">
-      {/* Same paper, ink and vermilion as the dashboard: a few soft washes of the
-          theme colours sit behind the page instead of a separate gradient. */}
+      {/* White fading into navy blue behind the page (deep navy in dark mode). */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_8%_0%,hsl(var(--mark)/0.10),transparent_70%),radial-gradient(50%_45%_at_100%_100%,hsl(var(--amber)/0.14),transparent_70%),radial-gradient(40%_40%_at_60%_40%,hsl(var(--secondary)/0.06),transparent_70%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(55%_50%_at_100%_100%,rgba(16,36,94,0.30),transparent_70%),linear-gradient(155deg,#ffffff_0%,#f1f4fb_40%,#c8d3ec_100%)] dark:bg-[radial-gradient(55%_50%_at_0%_0%,rgba(255,255,255,0.08),transparent_70%),linear-gradient(155deg,#0d1838_0%,#0b1a44_50%,#132f66_100%)]"
       />
 
       <div className="relative mx-auto flex min-h-screen max-w-[1320px] flex-col px-4 sm:px-8">

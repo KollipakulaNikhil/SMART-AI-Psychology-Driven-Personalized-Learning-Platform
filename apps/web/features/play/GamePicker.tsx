@@ -33,7 +33,7 @@ export function GamePicker({ lastPlayed, onPick }: { lastPlayed: GameId | null; 
                   Last played
                 </span>
               )}
-              <span className="absolute bottom-3 right-3 grid h-10 w-10 place-items-center rounded-md border-2 border-[#1B1A17] bg-[#F6F1E7] text-[#1B1A17]">
+              <span className="absolute bottom-3 right-3 grid h-10 w-10 place-items-center rounded-md border-2 border-[#0F1D3D] bg-white text-[#0F1D3D]">
                 <Play className="ml-0.5 h-4 w-4 fill-current" />
               </span>
             </div>

@@ -243,7 +243,7 @@ export function DiscoveryLab() {
                 ))}
               </div>
 
-              <div className="flex min-h-[190px] items-center justify-center rounded-lg bg-[#161512] p-5 text-[#EDE6D6]">
+              <div className="flex min-h-[190px] items-center justify-center rounded-lg bg-[#0A1330] p-5 text-[#EEF2FB]">
                 {openFormat === "visual" && (
                   <div className="flex flex-wrap items-end justify-center gap-3">
                     {[0, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 0.875].map((p) => (
@@ -284,7 +284,7 @@ export function DiscoveryLab() {
                       value={orbit}
                       onChange={(e) => setOrbit(Number(e.target.value))}
                       aria-label="Move the Moon around Earth"
-                      className="w-full accent-[#E8552D]"
+                      className="w-full accent-[#F97316]"
                     />
                     <p className="text-center text-xs text-[#A8A092]">Drag to move the Moon around Earth and watch its shape change.</p>
                   </div>
