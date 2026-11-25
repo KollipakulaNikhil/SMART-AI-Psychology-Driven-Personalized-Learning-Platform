@@ -12,6 +12,7 @@ import {
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  signInWithCustomToken,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as firebaseSignOut,
@@ -20,6 +21,7 @@ import {
 } from "firebase/auth";
 import { firebaseAuth, googleProvider } from "@/lib/firebase";
 import { createSession } from "@/services/lessons.service";
+import { apiPost } from "@/services/api";
 import type { SessionUser } from "@/lib/types";
 
 interface AuthContextValue {
@@ -30,6 +32,8 @@ interface AuthContextValue {
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
+  /** Signs in to the shared demo account via a server-issued token. */
+  signInAsDemo: () => Promise<void>;
   signUpWithEmail: (name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   markProfileComplete: () => void;
@@ -72,6 +76,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithPopup(firebaseAuth(), googleProvider);
   }, []);
 
+  const signInAsDemo = useCallback(async () => {
+    const { token } = await apiPost<{ token: string }>("/auth/demo");
+    await signInWithCustomToken(firebaseAuth(), token);
+  }, []);
+
   const signInWithEmail = useCallback(async (email: string, password: string) => {
     await signInWithEmailAndPassword(firebaseAuth(), email, password);
   }, []);
@@ -97,11 +106,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       signInWithGoogle,
       signInWithEmail,
+      signInAsDemo,
       signUpWithEmail,
       signOut,
       markProfileComplete,
     }),
-    [firebaseUser, sessionUser, hasProfile, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut, markProfileComplete]
+    [firebaseUser, sessionUser, hasProfile, loading, signInWithGoogle, signInWithEmail, signInAsDemo, signUpWithEmail, signOut, markProfileComplete]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
